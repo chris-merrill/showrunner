@@ -1,11 +1,13 @@
 // Popup menu: two switches, written to chrome.storage.local. The content script
 // watches storage and re-decorates, so changes land without a reload.
 
+const DEFAULT_ENDPOINT = 'https://diecastr.app/api/is-question';
+
 const DEFAULTS = {
   highlightQuestions: true,
   allowResolve: true,
   aiEnabled: false,
-  endpoint: '',
+  endpoint: DEFAULT_ENDPOINT,
   token: '',
 };
 
@@ -103,33 +105,25 @@ el.aiEnabled.addEventListener('change', () => {
   save();
 });
 
-// The endpoint's host isn't known at build time, so it's an optional permission
-// requested here — this click is the user gesture Chrome requires.
-el.saveAi.addEventListener('click', async () => {
-  const endpoint = el.endpoint.value.trim();
+// No host permission needed — the API sends CORS headers, so the service
+// worker's fetch is allowed on its own.
+el.saveAi.addEventListener('click', () => {
+  const endpoint = el.endpoint.value.trim() || DEFAULT_ENDPOINT;
   const token = el.token.value.trim();
 
-  if (!endpoint) {
-    el.aiNote.textContent = 'Enter an endpoint URL first.';
+  if (!token) {
+    el.aiNote.textContent = 'Paste your DIECASTr key first.';
     return;
   }
-
-  let origin;
   try {
-    origin = `${new URL(endpoint).origin}/*`;
+    new URL(endpoint);
   } catch {
-    el.aiNote.textContent = 'That doesn’t look like a valid URL.';
-    return;
-  }
-
-  const granted = await chrome.permissions.request({ origins: [origin] });
-  if (!granted) {
-    el.aiNote.textContent = 'Access denied — falling back to the “?” rule.';
+    el.aiNote.textContent = 'That endpoint isn’t a valid URL.';
     return;
   }
 
   save({ endpoint, token });
-  el.aiNote.textContent = `Saved. Classifying via ${new URL(endpoint).host}.`;
+  el.aiNote.textContent = `Saved — classifying via ${new URL(endpoint).host}.`;
 });
 
 el.reset.addEventListener('click', async () => {

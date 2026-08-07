@@ -34,22 +34,22 @@
       <span class="track"><span class="knob"></span></span>
       <span class="label">
         Smart detection
-        <em>Ask diecastr which lines are real requests</em>
+        <em>DIECASTr catches asks with no “?” in them</em>
       </span>
     </label>
 
     <section id="aiConfig" class="config" hidden>
       <label class="field">
-        <span class="field-label">Endpoint</span>
-        <input type="url" id="endpoint" placeholder="https://diecastr.com/api/classify" spellcheck="false" />
+        <span class="field-label">API key</span>
+        <input type="password" id="token" placeholder="DIECASTr key" spellcheck="false" />
       </label>
       <label class="field">
-        <span class="field-label">Token</span>
-        <input type="password" id="token" placeholder="Bearer token" spellcheck="false" />
+        <span class="field-label">Endpoint <em>(leave as-is)</em></span>
+        <input type="url" id="endpoint" spellcheck="false" />
       </label>
-      <button id="saveAi" class="btn">Save &amp; grant access</button>
+      <button id="saveAi" class="btn">Save</button>
       <p class="note" id="aiNote">
-        Until this is set, questions are detected locally by the “?” rule.
+        Without a key, questions are detected locally by the “?” rule.
       </p>
     </section>
 

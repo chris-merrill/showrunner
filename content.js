@@ -35,12 +35,18 @@
 
   // Classifier state. Verdicts are keyed by message text, same as `resolved` —
   // the row list is virtualised, so DOM nodes can't hold this.
-  const BATCH_SIZE = 15;
-  const BATCH_MS = 3000;
+  //
+  // The API takes one message per request and bills DIECASTr per call, so this
+  // is a bounded queue rather than a fan-out: identical text is never asked
+  // twice, and no more than MAX_INFLIGHT requests are open at once.
+  const MAX_INFLIGHT = 3;
+  const RATE_LIMIT_BACKOFF_MS = 60000;
   const verdicts = new Map();
-  const pending = new Map();
-  const inFlight = new Set();
-  let flushTimer = null;
+  const queued = [];
+  const seen = new Set();
+  let inFlight = 0;
+  let pausedUntil = 0;
+  let pumpTimer = null;
 
   /** @type {Element|null} */ let region = null;   // chat message region
   /** @type {Element|null} */ let rowList = null;  // element whose children are rows
@@ -120,54 +126,62 @@
   // it lands. Anything not yet classified keeps the '?' highlight in the
   // meantime, so the chat is never un-annotated while a batch is in flight.
   function shouldHighlight(key, text) {
-    const verdict = verdicts.get(key);
-    if (verdict) return !!verdict.is_request;
+    if (verdicts.has(key)) return verdicts.get(key);
     return isQuestion(text);
   }
 
   function queueForClassification(key, text) {
-    if (!settings.aiEnabled || !settings.endpoint) return;
-    if (verdicts.has(key) || pending.has(key) || inFlight.has(key)) return;
-
-    pending.set(key, text);
-    if (pending.size >= BATCH_SIZE) {
-      flushBatch();
-    } else if (!flushTimer) {
-      flushTimer = setTimeout(flushBatch, BATCH_MS);
-    }
+    if (!settings.aiEnabled || !settings.token) return;
+    if (seen.has(key)) return;
+    seen.add(key);
+    queued.push([key, text]);
+    pump();
   }
 
-  function flushBatch() {
-    clearTimeout(flushTimer);
-    flushTimer = null;
-    if (!pending.size) return;
+  function schedulePump(delay) {
+    if (pumpTimer) return;
+    pumpTimer = setTimeout(() => {
+      pumpTimer = null;
+      pump();
+    }, delay);
+  }
 
-    const batch = Array.from(pending.entries());
-    batch.forEach(([key]) => {
-      pending.delete(key);
-      inFlight.add(key);
-    });
+  function pump() {
+    const wait = pausedUntil - Date.now();
+    if (wait > 0) {
+      schedulePump(wait);
+      return;
+    }
 
-    // Index is the id: the response is matched back by position-free lookup, so
-    // a dropped or reordered result can't shift verdicts onto the wrong rows.
-    const payload = {
-      messages: batch.map(([, text], i) => ({ id: String(i), text })),
-    };
+    while (inFlight < MAX_INFLIGHT && queued.length) {
+      const [key, text] = queued.shift();
+      inFlight++;
 
-    chrome.runtime.sendMessage({ type: 'classify', payload }, (res) => {
-      void chrome.runtime.lastError;
-      batch.forEach(([key]) => inFlight.delete(key));
+      chrome.runtime.sendMessage({ type: 'classify', text }, (res) => {
+        void chrome.runtime.lastError;
+        inFlight--;
 
-      if (!res || res.error) {
-        log('classify failed:', res?.error);
-        return;
-      }
-      for (const result of res.results || []) {
-        const entry = batch[Number(result.id)];
-        if (entry) verdicts.set(entry[0], result);
-      }
-      scheduleDecorate();
-    });
+        if (res && typeof res.isQuestion === 'boolean') {
+          verdicts.set(key, res.isQuestion);
+          scheduleDecorate();
+        } else if (res?.status === 429) {
+          // Key paused by the owner — put it back and stop asking for a while.
+          queued.unshift([key, text]);
+          pausedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
+          log('rate limited (429) — pausing classification for 60s');
+        } else if (res?.status === 401) {
+          settings.aiEnabled = false;
+          log('auth failed (401) — smart detection off, using the "?" rule');
+        } else {
+          // 400/500/network: the spec says treat as not-a-question and move on.
+          // Leaving no verdict means the row keeps the local '?' rule, which is
+          // the better failure mode — a real question still highlights.
+          log('classify failed:', res?.status || res?.error);
+        }
+
+        pump();
+      });
+    }
   }
 
   function undecorate(row) {
@@ -319,6 +333,13 @@
     region = el;
     rowList = findRowList(el) || el;
     attachAttempts = 0;
+
+    // Messages already on screen at attach time are marked seen but never sent:
+    // classifying 40 rows of scrollback would be 40 billed calls for lines that
+    // have already scrolled past. They keep the local '?' rule.
+    if (rowList) {
+      for (const row of Array.from(rowList.children)) seen.add(keyOf(row));
+    }
 
     observer = new MutationObserver(scheduleDecorate);
     observer.observe(el, { childList: true, subtree: true, characterData: true });
