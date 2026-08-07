@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Whatnot Chat Helper",
+  "version": "0.4.0",
+  "description": "Mirrors Whatnot live chat into a side panel: highlights questions, tracks how long they've waited, and lets you mark them answered.",
+  "permissions": ["sidePanel", "storage", "scripting", "tabs"],
+  "host_permissions": [
+    "https://www.whatnot.com/*",
+    "https://whatnot.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Whatnot Chat Helper"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.whatnot.com/*",
+        "https://whatnot.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

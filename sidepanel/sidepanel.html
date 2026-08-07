@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Whatnot Chat Helper</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="title-row">
+        <span id="statusDot" class="dot" data-state="idle"></span>
+        <h1>Chat</h1>
+        <span id="count" class="count">0</span>
+        <button id="settingsToggle" class="icon-btn" title="Settings" aria-label="Settings">⚙</button>
+      </div>
+
+      <div class="filters" role="tablist">
+        <button class="chip is-active" data-filter="all" role="tab">All</button>
+        <button class="chip" data-filter="questions" role="tab">Questions only</button>
+        <button class="chip chip--ghost" id="showAnswered" title="Show answered too">
+          Answered <span id="answeredCount">0</span>
+        </button>
+      </div>
+
+      <div class="status-line" id="statusText">Starting…</div>
+    </header>
+
+    <section id="settings" class="settings" hidden>
+      <div class="btn-row">
+        <button id="reconnectBtn" class="btn">Reconnect</button>
+        <button id="pickBtn" class="btn">Pick chat area</button>
+      </div>
+      <div class="btn-row">
+        <button id="exportBtn" class="btn">Export CSV</button>
+        <button id="clearBtn" class="btn btn--danger">Clear</button>
+      </div>
+      <p class="hint">
+        <strong>Reconnect</strong> re-injects into any open Whatnot tab — use it if
+        the panel stays empty. <strong>Pick chat area</strong> is the fallback if
+        the chat isn't found automatically: click it, then click the chat list on
+        the page.
+      </p>
+    </section>
+
+    <main id="list" class="list" aria-live="polite"></main>
+
+    <div id="empty" class="empty">
+      <p>Waiting for chat…</p>
+      <p class="sub">
+        Open a live Whatnot show and keep that tab in front — Whatnot stops
+        sending chat to background tabs. Chat takes ~30s to load.
+      </p>
+    </div>
+
+    <script src="sidepanel.js"></script>
+  </body>
+</html>
