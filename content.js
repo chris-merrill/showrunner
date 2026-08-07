@@ -81,7 +81,7 @@
 
   // Stamped on <html> so a stale content script from a previous extension
   // reload is identifiable: check document.documentElement.dataset.wchV.
-  const VERSION = '0.10.0';
+  const VERSION = '0.10.1';
 
   const mark = (state) => {
     try {
@@ -94,6 +94,7 @@
   //   document.documentElement.dataset.wchMarks    — rows marked for the first time
   //   document.documentElement.dataset.wchRemarks  — rows we had to re-mark
   let marked = new WeakSet();
+  const offCandidate = new WeakMap();
   const diag = { marks: 0, remarks: 0 };
   const bumpDiag = (kind) => {
     diag[kind]++;
@@ -391,9 +392,26 @@
     queueForClassification(key, text);
 
     if (!settings.highlightQuestions || !shouldHighlight(key, text)) {
+      // Removal needs confirming twice with the same text before it happens.
+      //
+      // Scrolling recycles rows, and React re-renders them in stages — a row
+      // mid-render reports partial text, which reads as "not a question" for one
+      // batch and strips the border, then restores it on the next. Requiring two
+      // consecutive passes to agree means a transient state can't unmark a row.
+      // Adding a mark is still immediate; only removal waits.
+      if (row.hasAttribute(ATTR)) {
+        if (offCandidate.get(row) === key) {
+          offCandidate.delete(row);
+          undecorate(row);
+        } else {
+          offCandidate.set(row, key);
+        }
+        return;
+      }
       undecorate(row);
       return;
     }
+    offCandidate.delete(row);
 
     // Write only on change — an unconditional setAttribute every pass is a DOM
     // write per row per message, which is its own source of churn.

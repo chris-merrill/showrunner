@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Whatnot Chat Helper",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Highlights viewer questions in Whatnot live chat and lets you tick them off as you answer.",
   "permissions": [
     "storage",
