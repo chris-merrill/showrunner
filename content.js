@@ -18,12 +18,12 @@
   const ATTACH_RETRY_MS = 3000;
   const DETECT_WINDOW_MS = 6000;
 
-  const CLS = {
-    row: 'wch-row',
-    question: 'wch-q',
-    resolved: 'wch-resolved',
-    btn: 'wch-x',
-  };
+  // Styling hangs off a data attribute, not a class. React owns `className` on
+  // these rows and rewrites it on every re-render — a class we add is wiped and
+  // re-added a frame later, which is what the flicker was. React's diffing
+  // doesn't touch attributes outside its vdom, so this survives re-renders.
+  const ATTR = 'data-wch-q';
+  const CLS = { btn: 'wch-x' };
 
   let settings = {
     highlightQuestions: true,
@@ -77,13 +77,13 @@
     const style = document.createElement('style');
     style.id = 'wch-style';
     style.textContent = `
-      .${CLS.row} { position: relative; }
-      .${CLS.question} {
+      [${ATTR}] {
+        position: relative;
         background: rgba(124, 92, 255, 0.14);
         box-shadow: inset 3px 0 0 #7c5cff;
         border-radius: 6px;
       }
-      .${CLS.question}.${CLS.resolved} {
+      [${ATTR}="resolved"] {
         background: transparent;
         box-shadow: inset 3px 0 0 rgba(61, 220, 151, 0.9);
         opacity: 0.45;
@@ -104,9 +104,9 @@
         opacity: 0;
         transition: opacity 90ms ease;
       }
-      .${CLS.row}:hover .${CLS.btn} { opacity: 1; }
+      [${ATTR}]:hover .${CLS.btn} { opacity: 1; }
       .${CLS.btn}:hover { background: #3ddc97; }
-      .${CLS.resolved} .${CLS.btn} { opacity: 0.5; background: #3ddc97; }
+      [${ATTR}="resolved"] .${CLS.btn} { opacity: 0.5; background: #3ddc97; }
     `;
     (document.head || document.documentElement).append(style);
   }
@@ -171,7 +171,8 @@
   }
 
   function undecorate(row) {
-    row.classList.remove(CLS.row, CLS.question, CLS.resolved);
+    if (!row.hasAttribute(ATTR)) return;
+    row.removeAttribute(ATTR);
     const btn = row.querySelector(`.${CLS.btn}`);
     if (btn) btn.remove();
   }
@@ -184,12 +185,14 @@
     queueForClassification(key, text);
 
     if (!settings.highlightQuestions || !shouldHighlight(key, text)) {
-      if (row.classList.contains(CLS.question)) undecorate(row);
+      undecorate(row);
       return;
     }
 
-    row.classList.add(CLS.row, CLS.question);
-    row.classList.toggle(CLS.resolved, resolved.has(key));
+    // Write only on change — an unconditional setAttribute every pass is a DOM
+    // write per row per message, which is its own source of churn.
+    const want = resolved.has(key) ? 'resolved' : '1';
+    if (row.getAttribute(ATTR) !== want) row.setAttribute(ATTR, want);
 
     const existing = row.querySelector(`.${CLS.btn}`);
     if (!settings.allowResolve) {
@@ -210,7 +213,7 @@
       const key = keyOf(row);
       if (resolved.has(key)) resolved.delete(key);
       else resolved.add(key);
-      row.classList.toggle(CLS.resolved, resolved.has(key));
+      row.setAttribute(ATTR, resolved.has(key) ? 'resolved' : '1');
     });
     row.append(btn);
   }
@@ -220,7 +223,18 @@
       rowList = region ? findRowList(region) : null;
     }
     if (!rowList) return;
-    for (const row of Array.from(rowList.children)) decorate(row);
+
+    // Injecting the ✕ is itself a childList mutation. Left connected, the
+    // observer sees our own writes and schedules another pass — a feedback loop
+    // on top of whatever the page is doing.
+    if (observer) observer.disconnect();
+    try {
+      for (const row of Array.from(rowList.children)) decorate(row);
+    } finally {
+      if (observer && region) {
+        observer.observe(region, { childList: true, subtree: true, characterData: true });
+      }
+    }
   }
 
   // Chat can burst; coalesce to one pass per frame.
