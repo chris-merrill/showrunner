@@ -76,7 +76,7 @@
 
   // Stamped on <html> so a stale content script from a previous extension
   // reload is identifiable: check document.documentElement.dataset.wchV.
-  const VERSION = '0.8.2';
+  const VERSION = '0.9.0';
 
   const mark = (state) => {
     try {
@@ -344,6 +344,9 @@
   }
 
   // Chat can burst; coalesce to one pass per frame.
+  // Only for redraws that originate outside a DOM mutation — a classifier
+  // verdict arriving, or a settings change. Mutation-driven redraws run
+  // synchronously in the observer callback so they land before paint.
   function scheduleDecorate() {
     if (scheduled) return;
     scheduled = true;
@@ -439,7 +442,23 @@
       for (const row of Array.from(rowList.children)) seen.add(keyOf(row));
     }
 
-    observer = new MutationObserver(scheduleDecorate);
+    // Decorate synchronously in the observer callback, NOT on a rAF.
+    //
+    // MutationObserver callbacks run as microtasks at the end of the task that
+    // mutated the DOM — before the browser paints. React replacing a row and us
+    // re-marking it therefore land in the *same* frame, and the user never sees
+    // an unmarked state. Deferring to requestAnimationFrame meant the browser
+    // painted the bare row first and our styling one frame later: that gap,
+    // repeating on every incoming message, is the flicker.
+    observer = new MutationObserver(() => {
+      // Never let a throw here kill the observer — it's the only thing keeping
+      // decoration alive, and an uncaught error in a sync callback strands it.
+      try {
+        decorateAll();
+      } catch (err) {
+        log('decorate failed', err);
+      }
+    });
     observer.observe(el, { childList: true, subtree: true, characterData: true });
 
     log('attached via', source);
