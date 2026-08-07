@@ -76,6 +76,19 @@
     } catch (_) {}
   };
 
+  // Flicker diagnostics, readable from the page console without DEBUG logging:
+  //   document.documentElement.dataset.wchMarks    — rows marked for the first time
+  //   document.documentElement.dataset.wchRemarks  — rows we had to re-mark
+  const marked = new WeakSet();
+  const diag = { marks: 0, remarks: 0 };
+  const bumpDiag = (kind) => {
+    diag[kind]++;
+    try {
+      document.documentElement.dataset[kind === 'marks' ? 'wchMarks' : 'wchRemarks'] =
+        String(diag[kind]);
+    } catch (_) {}
+  };
+
   // ------------------------------------------------------------------- style
 
   function injectStyle() {
@@ -206,7 +219,16 @@
     // Write only on change — an unconditional setAttribute every pass is a DOM
     // write per row per message, which is its own source of churn.
     const want = resolved.has(key) ? 'resolved' : '1';
-    if (row.getAttribute(ATTR) !== want) row.setAttribute(ATTR, want);
+    if (row.getAttribute(ATTR) !== want) {
+      // Diagnostics: a re-mark on a node we already marked means something
+      // stripped our attribute (React reclaiming the row). A first mark on a
+      // node we've never seen means the row element itself was replaced.
+      // Reading the two counters tells us which — see README § Diagnosing flicker.
+      if (marked.has(row)) bumpDiag('remarks');
+      else bumpDiag('marks');
+      marked.add(row);
+      row.setAttribute(ATTR, want);
+    }
 
     const existing = row.querySelector(`.${CLS.btn}`);
     if (!settings.allowResolve) {
