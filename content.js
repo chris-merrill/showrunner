@@ -76,7 +76,7 @@
 
   // Stamped on <html> so a stale content script from a previous extension
   // reload is identifiable: check document.documentElement.dataset.wchV.
-  const VERSION = '0.8.1';
+  const VERSION = '0.8.2';
 
   const mark = (state) => {
     try {
@@ -100,14 +100,10 @@
 
   // ------------------------------------------------------------------- style
 
-  function injectStyle() {
-    if (document.getElementById('wch-style')) return;
-    const style = document.createElement('style');
-    style.id = 'wch-style';
-    // Outline, not a fill: an outline doesn't repaint the row's background, so
-    // it can't shimmer against the page's own painting. No transitions either —
-    // any animation on a row the page re-renders reads as a flash.
-    style.textContent = `
+  // Outline, not a fill: an outline doesn't repaint the row's background, so
+  // it can't shimmer against the page's own painting. No transitions either —
+  // any animation on a row the page re-renders reads as a flash.
+  const CSS = `
       [${ATTR}] {
         position: relative;
         outline: 2px solid #7c5cff;
@@ -149,8 +145,21 @@
         cursor: pointer;
       }
       .${CLS.btn}:hover { background: #ff5f6d; }
-    `;
-    (document.head || document.documentElement).append(style);
+  `;
+
+  // Overwrite, don't skip-if-present. An extension reload injects a fresh
+  // content script into a page that still holds the *previous* instance's
+  // stylesheet — bailing early left old CSS paired with new markup, which
+  // rendered the tags as unstyled block text in the message flow.
+  function injectStyle() {
+    let style = document.getElementById('wch-style');
+    if (style && style.textContent === CSS) return;
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'wch-style';
+      (document.head || document.documentElement).append(style);
+    }
+    style.textContent = CSS;
   }
 
   // -------------------------------------------------------------- decoration
