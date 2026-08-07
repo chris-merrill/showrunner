@@ -23,11 +23,16 @@
   // re-added a frame later, which is what the flicker was. React's diffing
   // doesn't touch attributes outside its vdom, so this survives re-renders.
   const ATTR = 'data-wch-q';
+  const TAB_ID = 'wch-tab';
   const CLS = { tag: 'wch-tag', label: 'wch-label', btn: 'wch-x' };
+
+  const NATIVE_TABS = ['Chat', 'Watching', 'Activity'];
+  let questionsOnly = false;
 
   let settings = {
     highlightQuestions: true,
     allowResolve: true,
+    questionsTab: true,
     aiEnabled: false,
     endpoint: '',
     token: '',
@@ -76,7 +81,7 @@
 
   // Stamped on <html> so a stale content script from a previous extension
   // reload is identifiable: check document.documentElement.dataset.wchV.
-  const VERSION = '0.9.0';
+  const VERSION = '0.10.0';
 
   const mark = (state) => {
     try {
@@ -133,6 +138,7 @@
       }
       [${ATTR}="resolved"] .${CLS.label} { background: #3ddc97; color: #0b2018; }
       .${CLS.btn} {
+        display: none;
         pointer-events: auto;
         appearance: none;
         border: 0;
@@ -140,11 +146,30 @@
         background: #151320;
         color: #fff;
         font: inherit;
+        white-space: nowrap;
         padding: 3px 5px;
         border-radius: 0 4px 0 4px;
         cursor: pointer;
       }
-      .${CLS.btn}:hover { background: #ff5f6d; }
+      /* The full label is wide for a ~300px chat column, so it only appears on
+         hover — the badge alone is what's visible while scanning. */
+      [${ATTR}]:hover .${CLS.btn} { display: inline-block; }
+      .${CLS.btn}:hover { background: #3ddc97; color: #0b2018; }
+
+      /* Questions-only filter. 'revert' rather than a fixed display value —
+         the rows are flex children and hardcoding 'block' would reflow them. */
+      [data-wch-only] > * { display: none !important; }
+      [data-wch-only] > [${ATTR}] { display: revert !important; }
+
+      #${TAB_ID}[data-wch-active] {
+        color: #7c5cff !important;
+        box-shadow: inset 0 -2px 0 #7c5cff;
+      }
+      #${TAB_ID} .wch-count {
+        margin-left: 4px;
+        font-size: 0.85em;
+        opacity: 0.7;
+      }
   `;
 
   // Overwrite, don't skip-if-present. An extension reload injects a fresh
@@ -160,6 +185,99 @@
       (document.head || document.documentElement).append(style);
     }
     style.textContent = CSS;
+  }
+
+  // ------------------------------------------------------------ questions tab
+
+  function findTabBar() {
+    const tabs = Array.from(document.querySelectorAll('button')).filter((b) =>
+      NATIVE_TABS.includes(textOf(b))
+    );
+    return tabs.length >= 2 ? tabs[0].parentElement : null;
+  }
+
+  function applyFilter() {
+    if (!rowList) return;
+    if (questionsOnly && settings.questionsTab) rowList.setAttribute('data-wch-only', '1');
+    else rowList.removeAttribute('data-wch-only');
+  }
+
+  function syncTab(tab) {
+    if (!tab) return;
+    if (questionsOnly) tab.setAttribute('data-wch-active', '1');
+    else tab.removeAttribute('data-wch-active');
+
+    const count = rowList ? rowList.querySelectorAll(`[${ATTR}]:not([${ATTR}="resolved"])`).length : 0;
+    const badge = tab.querySelector('.wch-count');
+    const want = count ? String(count) : '';
+    if (badge && badge.textContent !== want) badge.textContent = want;
+  }
+
+  function removeTab() {
+    const tab = document.getElementById(TAB_ID);
+    if (tab) tab.remove();
+    questionsOnly = false;
+    if (rowList) rowList.removeAttribute('data-wch-only');
+  }
+
+  // The tab is rebuilt if React drops it. Its className is copied from a real
+  // tab button rather than styled by hand — that's what makes it match, and it
+  // keeps matching when Whatnot restyles their own tabs.
+  function ensureTab() {
+    if (!settings.questionsTab) {
+      removeTab();
+      return;
+    }
+
+    const bar = findTabBar();
+    if (!bar) return;
+
+    let tab = document.getElementById(TAB_ID);
+    if (tab && tab.parentElement === bar) {
+      syncTab(tab);
+      return;
+    }
+    if (tab) tab.remove();
+
+    const model = Array.from(bar.children).find((c) => c.tagName === 'BUTTON');
+
+    tab = document.createElement('button');
+    tab.id = TAB_ID;
+    tab.type = 'button';
+    if (model) tab.className = model.className;
+    tab.textContent = 'Questions';
+
+    const badge = document.createElement('span');
+    badge.className = 'wch-count';
+    tab.append(badge);
+
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      questionsOnly = !questionsOnly;
+      applyFilter();
+      syncTab(tab);
+    });
+
+    bar.append(tab);
+
+    // Clicking a real tab drops our filter, so the panel can't be left showing
+    // a filtered list under someone else's tab.
+    if (!bar.dataset.wchBound) {
+      bar.dataset.wchBound = '1';
+      bar.addEventListener(
+        'click',
+        (e) => {
+          if (e.target.closest(`#${TAB_ID}`)) return;
+          questionsOnly = false;
+          applyFilter();
+          syncTab(document.getElementById(TAB_ID));
+        },
+        true
+      );
+    }
+
+    syncTab(tab);
   }
 
   // -------------------------------------------------------------- decoration
@@ -249,7 +367,7 @@
       const btn = document.createElement('button');
       btn.className = CLS.btn;
       btn.type = 'button';
-      btn.textContent = isResolved ? 'REOPEN' : 'CLOSE';
+      btn.textContent = isResolved ? 'REOPEN' : 'MARK AS RESOLVED';
       btn.addEventListener('click', (e) => {
         // Whatnot puts click handlers on the row itself (profile popovers etc).
         e.preventDefault();
@@ -315,7 +433,7 @@
       buildTag(row, key, isResolved);
       return;
     }
-    const wantBtn = isResolved ? 'REOPEN' : 'CLOSE';
+    const wantBtn = isResolved ? 'REOPEN' : 'MARK AS RESOLVED';
     if (btn.textContent !== wantBtn) btn.textContent = wantBtn;
   }
 
@@ -336,6 +454,8 @@
     if (observer) observer.disconnect();
     try {
       for (const row of Array.from(rowList.children)) decorate(row);
+      ensureTab();
+      applyFilter();
     } finally {
       if (observer && region) {
         observer.observe(region, { childList: true, subtree: true, characterData: true });
@@ -366,6 +486,10 @@
   function removeAllDecorations() {
     for (const el of document.querySelectorAll(`[${ATTR}]`)) el.removeAttribute(ATTR);
     for (const el of document.querySelectorAll(`.${CLS.tag}`)) el.remove();
+    for (const el of document.querySelectorAll('[data-wch-only]')) {
+      el.removeAttribute('data-wch-only');
+    }
+    removeTab();
     const style = document.getElementById('wch-style');
     if (style) style.remove();
     marked = new WeakSet();

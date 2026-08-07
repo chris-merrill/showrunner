@@ -6,6 +6,7 @@ const DEFAULT_ENDPOINT = 'https://diecastr.app/api/is-question';
 const DEFAULTS = {
   highlightQuestions: true,
   allowResolve: true,
+  questionsTab: true,
   aiEnabled: false,
   endpoint: DEFAULT_ENDPOINT,
   token: '',
@@ -17,6 +18,7 @@ const el = {
   reset: document.getElementById('reset'),
   highlightQuestions: document.getElementById('highlightQuestions'),
   allowResolve: document.getElementById('allowResolve'),
+  questionsTab: document.getElementById('questionsTab'),
   aiEnabled: document.getElementById('aiEnabled'),
   aiConfig: document.getElementById('aiConfig'),
   aiNote: document.getElementById('aiNote'),
@@ -80,6 +82,7 @@ async function load() {
   current = { ...DEFAULTS, ...(stored.settings || {}) };
   el.highlightQuestions.checked = current.highlightQuestions;
   el.allowResolve.checked = current.allowResolve;
+  el.questionsTab.checked = current.questionsTab;
   el.aiEnabled.checked = current.aiEnabled;
   el.endpoint.value = current.endpoint;
   el.token.value = current.token;
@@ -91,6 +94,7 @@ function save(patch = {}) {
     ...current,
     highlightQuestions: el.highlightQuestions.checked,
     allowResolve: el.allowResolve.checked,
+    questionsTab: el.questionsTab.checked,
     aiEnabled: el.aiEnabled.checked,
     ...patch,
   };
@@ -99,6 +103,7 @@ function save(patch = {}) {
 
 el.highlightQuestions.addEventListener('change', () => save());
 el.allowResolve.addEventListener('change', () => save());
+el.questionsTab.addEventListener('change', () => save());
 
 el.aiEnabled.addEventListener('change', () => {
   el.aiConfig.hidden = !el.aiEnabled.checked;
