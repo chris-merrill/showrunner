@@ -74,16 +74,21 @@
   // row's key and flips its highlight off and on.
   const textOf = (el) => ((el && el.textContent) || '').replace(/\s+/g, ' ').trim();
 
+  // Stamped on <html> so a stale content script from a previous extension
+  // reload is identifiable: check document.documentElement.dataset.wchV.
+  const VERSION = '0.8.1';
+
   const mark = (state) => {
     try {
       document.documentElement.setAttribute('data-wch', state);
+      document.documentElement.setAttribute('data-wch-v', VERSION);
     } catch (_) {}
   };
 
   // Flicker diagnostics, readable from the page console without DEBUG logging:
   //   document.documentElement.dataset.wchMarks    — rows marked for the first time
   //   document.documentElement.dataset.wchRemarks  — rows we had to re-mark
-  const marked = new WeakSet();
+  let marked = new WeakSet();
   const diag = { marks: 0, remarks: 0 };
   const bumpDiag = (kind) => {
     diag[kind]++;
@@ -290,9 +295,19 @@
     const wantLabel = isResolved ? 'ANSWERED' : 'QUESTION';
     if (label && label.textContent !== wantLabel) label.textContent = wantLabel;
 
+    // Keep the button in sync with the Allow-resolve toggle.
     const btn = tag.querySelector(`.${CLS.btn}`);
+    if (!settings.allowResolve) {
+      if (btn) btn.remove();
+      return;
+    }
+    if (!btn) {
+      tag.remove();
+      buildTag(row, key, isResolved);
+      return;
+    }
     const wantBtn = isResolved ? 'REOPEN' : 'CLOSE';
-    if (btn && btn.textContent !== wantBtn) btn.textContent = wantBtn;
+    if (btn.textContent !== wantBtn) btn.textContent = wantBtn;
   }
 
   function decorateAll() {
@@ -301,7 +316,12 @@
     }
     if (!rowList) return;
 
-    // Injecting the ✕ is itself a childList mutation. Left connected, the
+    // Self-heal: the tags are positioned by the injected stylesheet, so if it's
+    // missing they render as bare inline text in the message flow. Re-add rather
+    // than trusting that it survived.
+    injectStyle();
+
+    // Injecting the tag is itself a childList mutation. Left connected, the
     // observer sees our own writes and schedules another pass — a feedback loop
     // on top of whatever the page is doing.
     if (observer) observer.disconnect();
@@ -328,9 +348,15 @@
     });
   }
 
-  function clearAll() {
-    if (!rowList) return;
-    for (const row of Array.from(rowList.children)) undecorate(row);
+  // Full revert: every trace of the extension comes out of the page. Queries the
+  // whole document rather than the current rowList — rows we decorated may have
+  // scrolled out of the list we're holding a reference to.
+  function removeAllDecorations() {
+    for (const el of document.querySelectorAll(`[${ATTR}]`)) el.removeAttribute(ATTR);
+    for (const el of document.querySelectorAll(`.${CLS.tag}`)) el.remove();
+    const style = document.getElementById('wch-style');
+    if (style) style.remove();
+    marked = new WeakSet();
   }
 
   // ---------------------------------------------------------------- discovery
@@ -441,7 +467,12 @@
     if (area !== 'local' || !changes.settings) return;
     settings = { ...settings, ...changes.settings.newValue };
     log('settings changed', settings);
-    if (!settings.highlightQuestions) clearAll();
+
+    if (!settings.highlightQuestions) {
+      removeAllDecorations();
+      return;
+    }
+    injectStyle(); // re-add if a previous untick removed it
     scheduleDecorate();
   });
 
@@ -462,8 +493,8 @@
   // -------------------------------------------------------------------- boot
 
   async function boot() {
-    injectStyle();
     await loadSettings();
+    if (settings.highlightQuestions) injectStyle();
     mark('loaded');
     if (!tryAttach()) log('chat not up yet, retrying');
   }
