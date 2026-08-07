@@ -1,7 +1,13 @@
 // Popup menu: two switches, written to chrome.storage.local. The content script
 // watches storage and re-decorates, so changes land without a reload.
 
-const DEFAULTS = { highlightQuestions: true, allowResolve: true };
+const DEFAULTS = {
+  highlightQuestions: true,
+  allowResolve: true,
+  aiEnabled: false,
+  endpoint: '',
+  token: '',
+};
 
 const el = {
   dot: document.getElementById('dot'),
@@ -9,6 +15,12 @@ const el = {
   reset: document.getElementById('reset'),
   highlightQuestions: document.getElementById('highlightQuestions'),
   allowResolve: document.getElementById('allowResolve'),
+  aiEnabled: document.getElementById('aiEnabled'),
+  aiConfig: document.getElementById('aiConfig'),
+  aiNote: document.getElementById('aiNote'),
+  endpoint: document.getElementById('endpoint'),
+  token: document.getElementById('token'),
+  saveAi: document.getElementById('saveAi'),
 };
 
 async function activeWhatnotTab() {
@@ -59,24 +71,66 @@ async function refreshStatus() {
   }
 }
 
+let current = { ...DEFAULTS };
+
 async function load() {
   const stored = await chrome.storage.local.get('settings');
-  const settings = { ...DEFAULTS, ...(stored.settings || {}) };
-  el.highlightQuestions.checked = settings.highlightQuestions;
-  el.allowResolve.checked = settings.allowResolve;
+  current = { ...DEFAULTS, ...(stored.settings || {}) };
+  el.highlightQuestions.checked = current.highlightQuestions;
+  el.allowResolve.checked = current.allowResolve;
+  el.aiEnabled.checked = current.aiEnabled;
+  el.endpoint.value = current.endpoint;
+  el.token.value = current.token;
+  el.aiConfig.hidden = !current.aiEnabled;
 }
 
-function save() {
-  chrome.storage.local.set({
-    settings: {
-      highlightQuestions: el.highlightQuestions.checked,
-      allowResolve: el.allowResolve.checked,
-    },
-  });
+function save(patch = {}) {
+  current = {
+    ...current,
+    highlightQuestions: el.highlightQuestions.checked,
+    allowResolve: el.allowResolve.checked,
+    aiEnabled: el.aiEnabled.checked,
+    ...patch,
+  };
+  chrome.storage.local.set({ settings: current });
 }
 
-el.highlightQuestions.addEventListener('change', save);
-el.allowResolve.addEventListener('change', save);
+el.highlightQuestions.addEventListener('change', () => save());
+el.allowResolve.addEventListener('change', () => save());
+
+el.aiEnabled.addEventListener('change', () => {
+  el.aiConfig.hidden = !el.aiEnabled.checked;
+  save();
+});
+
+// The endpoint's host isn't known at build time, so it's an optional permission
+// requested here — this click is the user gesture Chrome requires.
+el.saveAi.addEventListener('click', async () => {
+  const endpoint = el.endpoint.value.trim();
+  const token = el.token.value.trim();
+
+  if (!endpoint) {
+    el.aiNote.textContent = 'Enter an endpoint URL first.';
+    return;
+  }
+
+  let origin;
+  try {
+    origin = `${new URL(endpoint).origin}/*`;
+  } catch {
+    el.aiNote.textContent = 'That doesn’t look like a valid URL.';
+    return;
+  }
+
+  const granted = await chrome.permissions.request({ origins: [origin] });
+  if (!granted) {
+    el.aiNote.textContent = 'Access denied — falling back to the “?” rule.';
+    return;
+  }
+
+  save({ endpoint, token });
+  el.aiNote.textContent = `Saved. Classifying via ${new URL(endpoint).host}.`;
+});
 
 el.reset.addEventListener('click', async () => {
   const tab = await activeWhatnotTab();

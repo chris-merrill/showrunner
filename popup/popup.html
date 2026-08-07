@@ -29,6 +29,30 @@
       </span>
     </label>
 
+    <label class="toggle">
+      <input type="checkbox" id="aiEnabled" />
+      <span class="track"><span class="knob"></span></span>
+      <span class="label">
+        Smart detection
+        <em>Ask diecastr which lines are real requests</em>
+      </span>
+    </label>
+
+    <section id="aiConfig" class="config" hidden>
+      <label class="field">
+        <span class="field-label">Endpoint</span>
+        <input type="url" id="endpoint" placeholder="https://diecastr.com/api/classify" spellcheck="false" />
+      </label>
+      <label class="field">
+        <span class="field-label">Token</span>
+        <input type="password" id="token" placeholder="Bearer token" spellcheck="false" />
+      </label>
+      <button id="saveAi" class="btn">Save &amp; grant access</button>
+      <p class="note" id="aiNote">
+        Until this is set, questions are detected locally by the “?” rule.
+      </p>
+    </section>
+
     <div class="foot">
       <span id="status">Checking…</span>
       <button id="reset" class="link">Reset ticks</button>

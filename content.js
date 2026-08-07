@@ -25,7 +25,22 @@
     btn: 'wch-x',
   };
 
-  let settings = { highlightQuestions: true, allowResolve: true };
+  let settings = {
+    highlightQuestions: true,
+    allowResolve: true,
+    aiEnabled: false,
+    endpoint: '',
+    token: '',
+  };
+
+  // Classifier state. Verdicts are keyed by message text, same as `resolved` —
+  // the row list is virtualised, so DOM nodes can't hold this.
+  const BATCH_SIZE = 15;
+  const BATCH_MS = 3000;
+  const verdicts = new Map();
+  const pending = new Map();
+  const inFlight = new Set();
+  let flushTimer = null;
 
   /** @type {Element|null} */ let region = null;   // chat message region
   /** @type {Element|null} */ let rowList = null;  // element whose children are rows
@@ -101,6 +116,60 @@
   const keyOf = (row) => textOf(row).slice(0, 200);
   const isQuestion = (t) => /\?\s*$/.test(t);
 
+  // Local rule is the instant answer; a verdict from diecastr supersedes it when
+  // it lands. Anything not yet classified keeps the '?' highlight in the
+  // meantime, so the chat is never un-annotated while a batch is in flight.
+  function shouldHighlight(key, text) {
+    const verdict = verdicts.get(key);
+    if (verdict) return !!verdict.is_request;
+    return isQuestion(text);
+  }
+
+  function queueForClassification(key, text) {
+    if (!settings.aiEnabled || !settings.endpoint) return;
+    if (verdicts.has(key) || pending.has(key) || inFlight.has(key)) return;
+
+    pending.set(key, text);
+    if (pending.size >= BATCH_SIZE) {
+      flushBatch();
+    } else if (!flushTimer) {
+      flushTimer = setTimeout(flushBatch, BATCH_MS);
+    }
+  }
+
+  function flushBatch() {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+    if (!pending.size) return;
+
+    const batch = Array.from(pending.entries());
+    batch.forEach(([key]) => {
+      pending.delete(key);
+      inFlight.add(key);
+    });
+
+    // Index is the id: the response is matched back by position-free lookup, so
+    // a dropped or reordered result can't shift verdicts onto the wrong rows.
+    const payload = {
+      messages: batch.map(([, text], i) => ({ id: String(i), text })),
+    };
+
+    chrome.runtime.sendMessage({ type: 'classify', payload }, (res) => {
+      void chrome.runtime.lastError;
+      batch.forEach(([key]) => inFlight.delete(key));
+
+      if (!res || res.error) {
+        log('classify failed:', res?.error);
+        return;
+      }
+      for (const result of res.results || []) {
+        const entry = batch[Number(result.id)];
+        if (entry) verdicts.set(entry[0], result);
+      }
+      scheduleDecorate();
+    });
+  }
+
   function undecorate(row) {
     row.classList.remove(CLS.row, CLS.question, CLS.resolved);
     const btn = row.querySelector(`.${CLS.btn}`);
@@ -111,13 +180,16 @@
     const text = textOf(row);
     if (!text || text.length > MAX_ROW_CHARS) return;
 
-    if (!settings.highlightQuestions || !isQuestion(text)) {
+    const key = keyOf(row);
+    queueForClassification(key, text);
+
+    if (!settings.highlightQuestions || !shouldHighlight(key, text)) {
       if (row.classList.contains(CLS.question)) undecorate(row);
       return;
     }
 
     row.classList.add(CLS.row, CLS.question);
-    row.classList.toggle(CLS.resolved, resolved.has(keyOf(row)));
+    row.classList.toggle(CLS.resolved, resolved.has(key));
 
     const existing = row.querySelector(`.${CLS.btn}`);
     if (!settings.allowResolve) {
