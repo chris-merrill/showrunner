@@ -23,7 +23,7 @@
   // re-added a frame later, which is what the flicker was. React's diffing
   // doesn't touch attributes outside its vdom, so this survives re-renders.
   const ATTR = 'data-wch-q';
-  const CLS = { btn: 'wch-x' };
+  const CLS = { tag: 'wch-tag', label: 'wch-label', btn: 'wch-x' };
 
   let settings = {
     highlightQuestions: true,
@@ -67,8 +67,12 @@
     return r.width > 40 && r.height > 60;
   };
 
-  const textOf = (el) =>
-    ((el && (el.innerText || el.textContent)) || '').replace(/\s+/g, ' ').trim();
+  // textContent, never innerText. innerText is layout-dependent: reading it
+  // forces a synchronous reflow, and we read it for every row on every mutation
+  // batch — that alone can make the page shimmer. It's also unstable mid-render
+  // (returns '' or partial text for a row being re-rendered), which changes the
+  // row's key and flips its highlight off and on.
+  const textOf = (el) => ((el && el.textContent) || '').replace(/\s+/g, ' ').trim();
 
   const mark = (state) => {
     try {
@@ -95,37 +99,51 @@
     if (document.getElementById('wch-style')) return;
     const style = document.createElement('style');
     style.id = 'wch-style';
+    // Outline, not a fill: an outline doesn't repaint the row's background, so
+    // it can't shimmer against the page's own painting. No transitions either —
+    // any animation on a row the page re-renders reads as a flash.
     style.textContent = `
       [${ATTR}] {
         position: relative;
-        background: rgba(124, 92, 255, 0.14);
-        box-shadow: inset 3px 0 0 #7c5cff;
+        outline: 2px solid #7c5cff;
+        outline-offset: -2px;
         border-radius: 6px;
       }
       [${ATTR}="resolved"] {
-        background: transparent;
-        box-shadow: inset 3px 0 0 rgba(61, 220, 151, 0.9);
-        opacity: 0.45;
+        outline-color: #3ddc97;
+        opacity: 0.55;
       }
-      .${CLS.btn} {
+      .${CLS.tag} {
         position: absolute;
-        top: 2px;
-        right: 2px;
+        top: 0;
+        right: 0;
         z-index: 5;
+        display: flex;
+        align-items: stretch;
+        font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.06em;
+        pointer-events: none;
+      }
+      .${CLS.label} {
+        background: #7c5cff;
+        color: #fff;
+        padding: 3px 5px;
+        border-radius: 0 4px 0 4px;
+      }
+      [${ATTR}="resolved"] .${CLS.label} { background: #3ddc97; color: #0b2018; }
+      .${CLS.btn} {
+        pointer-events: auto;
         appearance: none;
         border: 0;
-        border-radius: 5px;
-        background: rgba(124, 92, 255, 0.9);
+        margin-left: 2px;
+        background: #151320;
         color: #fff;
-        font: 600 10px/1 system-ui, sans-serif;
-        padding: 4px 6px;
+        font: inherit;
+        padding: 3px 5px;
+        border-radius: 0 4px 0 4px;
         cursor: pointer;
-        opacity: 0;
-        transition: opacity 90ms ease;
       }
-      [${ATTR}]:hover .${CLS.btn} { opacity: 1; }
-      .${CLS.btn}:hover { background: #3ddc97; }
-      [${ATTR}="resolved"] .${CLS.btn} { opacity: 0.5; background: #3ddc97; }
+      .${CLS.btn}:hover { background: #ff5f6d; }
     `;
     (document.head || document.documentElement).append(style);
   }
@@ -200,8 +218,37 @@
   function undecorate(row) {
     if (!row.hasAttribute(ATTR)) return;
     row.removeAttribute(ATTR);
-    const btn = row.querySelector(`.${CLS.btn}`);
-    if (btn) btn.remove();
+    const tag = row.querySelector(`.${CLS.tag}`);
+    if (tag) tag.remove();
+  }
+
+  function buildTag(row, key, isResolved) {
+    const tag = document.createElement('span');
+    tag.className = CLS.tag;
+
+    const label = document.createElement('span');
+    label.className = CLS.label;
+    label.textContent = isResolved ? 'ANSWERED' : 'QUESTION';
+    tag.append(label);
+
+    if (settings.allowResolve) {
+      const btn = document.createElement('button');
+      btn.className = CLS.btn;
+      btn.type = 'button';
+      btn.textContent = isResolved ? 'REOPEN' : 'CLOSE';
+      btn.addEventListener('click', (e) => {
+        // Whatnot puts click handlers on the row itself (profile popovers etc).
+        e.preventDefault();
+        e.stopPropagation();
+        if (resolved.has(key)) resolved.delete(key);
+        else resolved.add(key);
+        scheduleDecorate();
+      });
+      tag.append(btn);
+    }
+
+    row.append(tag);
+    return tag;
   }
 
   function decorate(row) {
@@ -230,28 +277,22 @@
       row.setAttribute(ATTR, want);
     }
 
-    const existing = row.querySelector(`.${CLS.btn}`);
-    if (!settings.allowResolve) {
-      if (existing) existing.remove();
+    const isResolved = want === 'resolved';
+    const tag = row.querySelector(`.${CLS.tag}`);
+
+    if (!tag) {
+      buildTag(row, key, isResolved);
       return;
     }
-    if (existing) return;
 
-    const btn = document.createElement('button');
-    btn.className = CLS.btn;
-    btn.type = 'button';
-    btn.textContent = '✕';
-    btn.title = 'Mark answered';
-    btn.addEventListener('click', (e) => {
-      // Whatnot puts click handlers on the row itself (profile popovers etc).
-      e.preventDefault();
-      e.stopPropagation();
-      const key = keyOf(row);
-      if (resolved.has(key)) resolved.delete(key);
-      else resolved.add(key);
-      row.setAttribute(ATTR, resolved.has(key) ? 'resolved' : '1');
-    });
-    row.append(btn);
+    // Tag already present — only touch the label/button text if it's stale.
+    const label = tag.querySelector(`.${CLS.label}`);
+    const wantLabel = isResolved ? 'ANSWERED' : 'QUESTION';
+    if (label && label.textContent !== wantLabel) label.textContent = wantLabel;
+
+    const btn = tag.querySelector(`.${CLS.btn}`);
+    const wantBtn = isResolved ? 'REOPEN' : 'CLOSE';
+    if (btn && btn.textContent !== wantBtn) btn.textContent = wantBtn;
   }
 
   function decorateAll() {
