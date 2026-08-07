@@ -81,7 +81,7 @@
 
   // Stamped on <html> so a stale content script from a previous extension
   // reload is identifiable: check document.documentElement.dataset.wchV.
-  const VERSION = '0.11.1';
+  const VERSION = '0.12.0';
 
   const mark = (state) => {
     try {
@@ -327,7 +327,40 @@
 
   // -------------------------------------------------------------- decoration
 
-  const keyOf = (row) => textOf(row).slice(0, 200);
+  const BADGE = /^(mod|host|vip|verified|og|new|top buyer|following|seller)$/i;
+
+  // The message text only — not the whole row.
+  //
+  // Keying off the row's full textContent meant the username, badges, and the
+  // avatar's fallback initial were part of the key. When an avatar image
+  // finishes loading, that initial disappears, the key changes, and the same
+  // message gets queued for classification a second time — a duplicate billed
+  // call for every avatar that loads late. Stripping to the message body makes
+  // the key stable, and sends the classifier cleaner input.
+  function messageOf(row) {
+    const clone = row.cloneNode(true);
+    clone
+      .querySelectorAll('img, svg, picture, video, [class*="rounded-full"], [class*="avatar"]')
+      .forEach((n) => n.remove());
+
+    const parts = Array.from(clone.querySelectorAll('*'))
+      .filter((e) => e.children.length === 0)
+      .map((e) => (e.textContent || '').replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+
+    if (parts.length < 2) return textOf(clone).slice(0, 200);
+
+    // parts[0] is the username when it's a single token; the rest is the body,
+    // minus badge chips that sit between the name and the message.
+    const body = (/^\S{1,30}$/.test(parts[0]) ? parts.slice(1) : parts)
+      .filter((p) => !BADGE.test(p))
+      .join(' ')
+      .trim();
+
+    return (body || textOf(clone)).slice(0, 200);
+  }
+
+  const keyOf = (row) => messageOf(row);
   const isQuestion = (t) => /\?\s*$/.test(t);
 
   // Local rule is the instant answer; a verdict from diecastr supersedes it when
@@ -436,11 +469,13 @@
   }
 
   function decorate(row) {
-    const text = textOf(row);
-    if (!text || text.length > MAX_ROW_CHARS) return;
+    const raw = textOf(row);
+    if (!raw || raw.length > MAX_ROW_CHARS) return;
 
+    // key IS the message body — classify and match on that, not the raw row.
     const key = keyOf(row);
-    queueForClassification(key, text);
+    const text = key;
+    if (text.length >= 2) queueForClassification(key, text);
 
     if (!settings.highlightQuestions || !shouldHighlight(key, text)) {
       // Removal needs confirming twice with the same text before it happens.
