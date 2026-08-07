@@ -81,7 +81,7 @@
 
   // Stamped on <html> so a stale content script from a previous extension
   // reload is identifiable: check document.documentElement.dataset.wchV.
-  const VERSION = '0.10.1';
+  const VERSION = '0.11.0';
 
   const mark = (state) => {
     try {
@@ -109,67 +109,76 @@
   // Outline, not a fill: an outline doesn't repaint the row's background, so
   // it can't shimmer against the page's own painting. No transitions either —
   // any animation on a row the page re-renders reads as a flash.
+  // Styled to disappear into Whatnot's own UI: their orange question colour,
+  // system font, sentence case, pill shapes. Nothing here should read as
+  // "an extension did this".
   const CSS = `
       [${ATTR}] {
         position: relative;
-        outline: 2px solid #7c5cff;
-        outline-offset: -2px;
-        border-radius: 6px;
+        background: rgba(234, 88, 12, 0.06);
+        box-shadow: inset 2px 0 0 #ea580c;
+        border-radius: 8px;
       }
       [${ATTR}="resolved"] {
-        outline-color: #3ddc97;
-        opacity: 0.55;
+        background: transparent;
+        box-shadow: inset 2px 0 0 rgba(0, 0, 0, 0.14);
+        opacity: 0.5;
       }
       .${CLS.tag} {
         position: absolute;
-        top: 0;
-        right: 0;
+        top: 3px;
+        right: 5px;
         z-index: 5;
         display: flex;
-        align-items: stretch;
-        font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-        letter-spacing: 0.06em;
+        align-items: center;
+        gap: 4px;
         pointer-events: none;
+        font: 600 10px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
       }
       .${CLS.label} {
-        background: #7c5cff;
-        color: #fff;
-        padding: 3px 5px;
-        border-radius: 0 4px 0 4px;
+        background: rgba(234, 88, 12, 0.12);
+        color: #c2410c;
+        padding: 3px 7px;
+        border-radius: 999px;
       }
-      [${ATTR}="resolved"] .${CLS.label} { background: #3ddc97; color: #0b2018; }
+      [${ATTR}="resolved"] .${CLS.label} {
+        background: rgba(0, 0, 0, 0.06);
+        color: #4b5563;
+      }
       .${CLS.btn} {
         display: none;
         pointer-events: auto;
         appearance: none;
-        border: 0;
-        margin-left: 2px;
-        background: #151320;
-        color: #fff;
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #e5e7eb;
         font: inherit;
+        font-weight: 500;
         white-space: nowrap;
-        padding: 3px 5px;
-        border-radius: 0 4px 0 4px;
+        padding: 3px 8px;
+        border-radius: 999px;
         cursor: pointer;
       }
-      /* The full label is wide for a ~300px chat column, so it only appears on
-         hover — the badge alone is what's visible while scanning. */
+      /* Full label is wide for a ~300px column, so it reveals on hover — the
+         pill alone is what's visible while scanning. */
       [${ATTR}]:hover .${CLS.btn} { display: inline-block; }
-      .${CLS.btn}:hover { background: #3ddc97; color: #0b2018; }
+      .${CLS.btn}:hover { background: #e5e7eb; color: #111827; }
 
       /* Questions-only filter. 'revert' rather than a fixed display value —
          the rows are flex children and hardcoding 'block' would reflow them. */
       [data-wch-only] > * { display: none !important; }
       [data-wch-only] > [${ATTR}] { display: revert !important; }
 
+      /* currentColor, not a brand colour of ours — the tab inherits Whatnot's
+         own text colour so the active underline matches their tabs. */
       #${TAB_ID}[data-wch-active] {
-        color: #7c5cff !important;
-        box-shadow: inset 0 -2px 0 #7c5cff;
+        font-weight: 600;
+        box-shadow: inset 0 -2px 0 currentColor;
       }
       #${TAB_ID} .wch-count {
-        margin-left: 4px;
+        margin-left: 5px;
         font-size: 0.85em;
-        opacity: 0.7;
+        opacity: 0.55;
       }
   `;
 
@@ -361,14 +370,14 @@
 
     const label = document.createElement('span');
     label.className = CLS.label;
-    label.textContent = isResolved ? 'ANSWERED' : 'QUESTION';
+    label.textContent = isResolved ? 'Resolved' : 'Question';
     tag.append(label);
 
     if (settings.allowResolve) {
       const btn = document.createElement('button');
       btn.className = CLS.btn;
       btn.type = 'button';
-      btn.textContent = isResolved ? 'REOPEN' : 'MARK AS RESOLVED';
+      btn.textContent = isResolved ? 'Reopen' : 'Mark as resolved';
       btn.addEventListener('click', (e) => {
         // Whatnot puts click handlers on the row itself (profile popovers etc).
         e.preventDefault();
@@ -437,7 +446,7 @@
 
     // Tag already present — only touch the label/button text if it's stale.
     const label = tag.querySelector(`.${CLS.label}`);
-    const wantLabel = isResolved ? 'ANSWERED' : 'QUESTION';
+    const wantLabel = isResolved ? 'Resolved' : 'Question';
     if (label && label.textContent !== wantLabel) label.textContent = wantLabel;
 
     // Keep the button in sync with the Allow-resolve toggle.
@@ -451,7 +460,7 @@
       buildTag(row, key, isResolved);
       return;
     }
-    const wantBtn = isResolved ? 'REOPEN' : 'MARK AS RESOLVED';
+    const wantBtn = isResolved ? 'Reopen' : 'Mark as resolved';
     if (btn.textContent !== wantBtn) btn.textContent = wantBtn;
   }
 
