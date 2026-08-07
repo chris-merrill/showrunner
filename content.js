@@ -81,7 +81,7 @@
 
   // Stamped on <html> so a stale content script from a previous extension
   // reload is identifiable: check document.documentElement.dataset.wchV.
-  const VERSION = '0.11.0';
+  const VERSION = '0.11.1';
 
   const mark = (state) => {
     try {
@@ -103,6 +103,41 @@
         String(diag[kind]);
     } catch (_) {}
   };
+
+  // ---------------------------------------------------------------- liveness
+
+  // Reloading the extension invalidates this script's context while the page
+  // keeps running it. Every chrome.* call then throws "Extension context
+  // invalidated" — from pump(), that unwound through decorate → decorateAll →
+  // the observer callback. Detect it once and stand down cleanly instead.
+  let dead = false;
+  const intervals = [];
+
+  function alive() {
+    if (dead) return false;
+    try {
+      return !!chrome.runtime?.id;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function shutdown(reason) {
+    if (dead) return;
+    dead = true;
+    log('shutting down:', reason);
+    try {
+      if (observer) observer.disconnect();
+    } catch (_) {}
+    for (const id of intervals) clearInterval(id);
+    // Leave the page as we found it — the orphaned script can't clean up later.
+    try {
+      removeAllDecorations();
+    } catch (_) {}
+  }
+
+  const isContextError = (err) =>
+    /Extension context invalidated|Receiving end does not exist/i.test(err?.message || '');
 
   // ------------------------------------------------------------------- style
 
@@ -320,6 +355,7 @@
   }
 
   function pump() {
+    if (!alive()) return shutdown('context invalidated');
     const wait = pausedUntil - Date.now();
     if (wait > 0) {
       schedulePump(wait);
@@ -330,7 +366,8 @@
       const [key, text] = queued.shift();
       inFlight++;
 
-      chrome.runtime.sendMessage({ type: 'classify', text }, (res) => {
+      try {
+        chrome.runtime.sendMessage({ type: 'classify', text }, (res) => {
         void chrome.runtime.lastError;
         inFlight--;
 
@@ -352,8 +389,13 @@
           log('classify failed:', res?.status || res?.error);
         }
 
-        pump();
-      });
+          pump();
+        });
+      } catch (err) {
+        inFlight--;
+        if (isContextError(err)) return shutdown(err.message);
+        log('classify threw:', err.message);
+      }
     }
   }
 
@@ -465,6 +507,7 @@
   }
 
   function decorateAll() {
+    if (!alive()) return shutdown('context invalidated');
     if (!rowList || !document.contains(rowList)) {
       rowList = region ? findRowList(region) : null;
     }
@@ -502,7 +545,8 @@
       try {
         decorateAll();
       } catch (err) {
-        log('decorate failed', err);
+        if (isContextError(err)) shutdown(err.message);
+        else log('decorate failed', err);
       }
     });
   }
@@ -680,20 +724,20 @@
 
   // Chat mounts well after document_idle (20-40s on a live show) and not at all
   // while the tab is backgrounded, so attaching is a retry loop, not a one-shot.
-  setInterval(() => {
+  intervals.push(setInterval(() => {
     if (region && document.contains(region)) return;
     attachAttempts++;
     if (tryAttach()) return;
     if (attachAttempts % 10 === 0) autoDetect();
-  }, ATTACH_RETRY_MS);
+  }, ATTACH_RETRY_MS));
 
   // Whatnot is a SPA: re-attach when the route changes.
-  setInterval(() => {
+  intervals.push(setInterval(() => {
     if (location.href === currentUrl) return;
     currentUrl = location.href;
     detach();
     boot();
-  }, 1500);
+  }, 1500));
 
   boot();
 })();
