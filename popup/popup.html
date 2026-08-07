@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Whatnot Chat Helper</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="head">
+      <span id="dot" class="dot" data-state="idle"></span>
+      <h1>Chat Helper</h1>
+    </header>
+
+    <label class="toggle">
+      <input type="checkbox" id="highlightQuestions" />
+      <span class="track"><span class="knob"></span></span>
+      <span class="label">
+        Highlight questions
+        <em>Colours any chat line ending in “?”</em>
+      </span>
+    </label>
+
+    <label class="toggle">
+      <input type="checkbox" id="allowResolve" />
+      <span class="track"><span class="knob"></span></span>
+      <span class="label">
+        Allow resolve
+        <em>Adds a ✕ on hover to tick one off</em>
+      </span>
+    </label>
+
+    <div class="foot">
+      <span id="status">Checking…</span>
+      <button id="reset" class="link">Reset ticks</button>
+    </div>
+  </body>
+  <script src="popup.js"></script>
+</html>

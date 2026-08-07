@@ -1,0 +1,132 @@
+:root {
+  --bg: #12111a;
+  --bg-raised: #1b1a26;
+  --border: #2c2a3c;
+  --text: #ece9f5;
+  --text-dim: #9b96b3;
+  --accent: #7c5cff;
+  --good: #3ddc97;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --bg-raised: #f5f4fa;
+    --border: #dedbeb;
+    --text: #1a1826;
+    --text-dim: #6b6785;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  width: 268px;
+  margin: 0;
+  padding: 12px;
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  font-size: 13px;
+  font-weight: 650;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+.dot[data-state="on"] { background: var(--good); box-shadow: 0 0 0 3px rgba(61, 220, 151, 0.18); }
+.dot[data-state="off"] { background: var(--text-dim); }
+
+/* ---------------------------------------------------------------- toggles */
+
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-raised);
+  cursor: pointer;
+  margin-bottom: 7px;
+}
+.toggle:hover { border-color: var(--accent); }
+
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+
+.track {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--border);
+  position: relative;
+  transition: background 120ms ease;
+  margin-top: 1px;
+}
+
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 120ms ease;
+}
+
+.toggle input:checked + .track { background: var(--accent); }
+.toggle input:checked + .track .knob { transform: translateX(12px); }
+.toggle input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.label { font-weight: 550; }
+.label em {
+  display: block;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+/* ------------------------------------------------------------------- foot */
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.link {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 550;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 5px;
+}
+.link:hover { background: rgba(124, 92, 255, 0.14); }
