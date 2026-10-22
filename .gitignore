@@ -1,3 +1,4 @@
 dev/.venv/
 dist/
 .DS_Store
+mac-print-bridge/.venv/

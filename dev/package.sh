@@ -1,13 +1,20 @@
 #!/bin/bash
-# Build a distributable zip of the extension (what gets uploaded to the Chrome
-# Web Store, or handed out for "Load unpacked"). Only runtime files go in.
+# Build the release artifacts:
+#   dist/Showrunner-<version>.zip                  the Chrome extension (runtime files only;
+#                                                  what the Web Store takes, or "Load unpacked")
+#   dist/Showrunner-mac-print-bridge-<version>.zip the Mac print bridge (Python + start script)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 version=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
 name=$(python3 -c "import json; print(json.load(open('manifest.json'))['name'])" | tr -cs 'A-Za-z0-9' '-' | sed 's/^-//; s/-$//')
-out="dist/${name}-${version}.zip"
 mkdir -p dist
-rm -f "$out"
-zip -q -r "$out" manifest.json background.js content.js capture.js options icons \
-  -x '*.DS_Store' 2>/dev/null || zip -q -r "$out" manifest.json background.js content.js capture.js options -x '*.DS_Store'
-echo "built $out ($(du -h "$out" | cut -f1))"
+
+ext="dist/${name}-${version}.zip"
+rm -f "$ext"
+zip -q -r "$ext" manifest.json background.js content.js capture.js options icons -x '*.DS_Store'
+echo "built $ext ($(du -h "$ext" | cut -f1))"
+
+mac="dist/${name}-mac-print-bridge-${version}.zip"
+rm -f "$mac"
+zip -q -r "$mac" mac-print-bridge -x '*.DS_Store' -x 'mac-print-bridge/.venv/*'
+echo "built $mac ($(du -h "$mac" | cut -f1))"

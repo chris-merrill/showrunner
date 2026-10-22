@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Stand-in for the DYMO Web Service, for development on a Mac where DYMO's own
-service doesn't run. Speaks the same three calls the extension uses:
+Showrunner Print Bridge for Mac: a stand-in for the DYMO Web Service on Macs,
+where DYMO's own service doesn't run reliably. Speaks the same three calls the
+extension uses:
 
     GET  /DYMO/DLS/Printing/StatusConnected   -> "true"
     GET  /DYMO/DLS/Printing/GetPrinters       -> JSON-encoded XML printer list
@@ -12,8 +13,8 @@ It lists the Mac's DYMO print queues, renders the label XML's text runs onto a
 extension -> service -> printer flow and what the label looks like, not that
 DYMO's real service accepts the XML. Plain HTTP on 127.0.0.1:41951.
 
-    dev/.venv/bin/python dev/dymo-standin.py            # all DYMO queues
-    dev/.venv/bin/python dev/dymo-standin.py --port 41951
+    bash mac-print-bridge/start.sh            # sets up a venv with Pillow, then runs this
+    bash mac-print-bridge/start.sh --port 41951
 """
 import argparse
 import html

@@ -20,6 +20,12 @@ labels).
 3. Open DYMO Connect once and print any test label from it, to confirm the
    printer works on its own. Close it; the background service keeps running.
 
+**On a Mac** DYMO Connect's service doesn't work reliably, so Macs use the
+**Showrunner Print Bridge** instead: download `Showrunner-mac-print-bridge-x.y.z.zip`
+from the same Releases page and follow the README inside it (plug the printer
+in by USB, run `start.sh`, leave it open during the show). Step 3 below is the
+same on both.
+
 ## 2. Install the extension (one time)
 
 1. Download the latest **Showrunner-x.y.z.zip** from

@@ -12,7 +12,25 @@ Seller tools for Whatnot live shows, as a Chrome extension.
 
 **Get it:** download the latest zip from
 [Releases](https://github.com/chris-merrill/showrunner/releases/latest) and follow
-[SETUP.md](SETUP.md). Everything below is for developers.
+[SETUP.md](SETUP.md). Mac users also need the **mac print bridge** zip from the
+same page (`mac-print-bridge/`). Everything below is for developers.
+
+## Layout, and the planned move into DIECASTr
+
+This repo is deliberately self-contained so it can be moved into the DIECASTr
+project as one folder (e.g. `apps/showrunner/`) without untangling anything:
+
+| Path | What | Depends on |
+|---|---|---|
+| `manifest.json`, `background.js`, `content.js`, `capture.js`, `options/`, `icons/` | the Chrome extension | nothing outside this repo; the only network call besides Whatnot's own page is the optional question classifier at `diecastr.app/api/is-question` (the endpoint is a setting) |
+| `mac-print-bridge/` | the Mac print service (Python 3 + Pillow, its own venv) | nothing in the extension |
+| `dev/` | packaging (`package.sh`) and icon generation (`make-icons.py`) | the two above |
+| `SETUP.md` | the seller's guide | — |
+
+Nothing here imports from, links to, or is built by any other repo. When it
+moves, `dev/package.sh` keeps working from the new folder (paths are relative
+to the script), and the GitHub Releases link in `SETUP.md`/`README.md` is the
+only thing to update.
 
 ## Install (unpacked)
 
@@ -65,13 +83,13 @@ show in a second window:
     DYMO Connect 1.6.3 stays installed but its service is useless here. Its
     installer also deletes the USB print queue each time it runs; re-create it with
     `lpadmin -p DYMO_LabelWriter_450_USB -v "usb://DYMO/LabelWriter%20450?serial=…" -m Library/Printers/PPDs/Contents/Resources/lw450.ppd.gz -E`.
-  - **Mac development stand-in:** `dev/dymo-standin.py` answers the same three
-    calls on plain `http://127.0.0.1:41951`, lists the Mac's DYMO CUPS queues,
-    renders the label XML's text runs at 300 dpi and prints with `lp`. Run
-    `dev/.venv/bin/python dev/dymo-standin.py` (venv has Pillow). The extension
-    probes the HTTPS addresses first and this HTTP one last, so on Pablo's PC the
-    real service wins. It proves the flow and the label layout, not that DYMO's
-    real service accepts the XML.
+  - **Mac print bridge:** `mac-print-bridge/showrunner-print-bridge.py` answers
+    the same three calls on plain `http://127.0.0.1:41951`, lists the Mac's DYMO
+    CUPS queues, renders the label XML's text runs at 300 dpi and prints with
+    `lp`. Run `bash mac-print-bridge/start.sh` (creates a venv with Pillow on
+    first run). The extension probes the HTTPS addresses first and this HTTP one
+    last, so on a Windows PC DYMO's real service wins. It proves the flow and
+    the label layout, not that DYMO's real service accepts the XML.
 - **Reset ticks** — clears all ticks for the open show
 
 Settings save instantly and apply without reloading anything.
