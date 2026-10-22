@@ -8,7 +8,8 @@ Seller tools for Whatnot live shows, as a Chrome extension.
 - **Auction**: a card above the shop list that follows the current item (running,
   sold, awaiting next) with a history of every sale in the show.
 - **Labels**: prints a DYMO LabelWriter label on every sale (title, date/time,
-  seller · buyer · price), with one-click reprints.
+  seller · buyer · price), with one-click reprints and a **Reprint last label**
+  button for bundles that each need the same label.
 
 **Get it:** download the latest zip from
 [Releases](https://github.com/chris-merrill/showrunner/releases/latest) and follow

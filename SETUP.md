@@ -69,7 +69,9 @@ Chrome, on `whatnot.com`).
   either way.
 - **Above your shop list**: the **Auction** card. It follows the current item
   and shows *Running*, *Sold* or *Awaiting next item*, who's winning, and
-  "Label printed ✓" after each sale. Under **History**, every sale of the show
+  "Label printed ✓" after each sale. **Reprint last label** prints the most
+  recent sale's label again, one tap per extra copy (for a bundle of cars that
+  each need the same label). Under **History**, every sale of the show
   with a printer icon to **reprint** that label (say the first one jammed) and a
   × to remove it from the list. The **Auto-print** switch there is the same as
   the settings-page one.

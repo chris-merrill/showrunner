@@ -205,6 +205,24 @@
     #${CARD_ID} .wn-print:empty { display: none; }
     #${CARD_ID} .wn-print[data-ok="1"] { color: #2f9e44; }
     #${CARD_ID} .wn-print[data-ok="0"] { color: #e03131; }
+    #${CARD_ID} .wn-again {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 9px 12px;
+      border: 1px solid var(--wn-line);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--wn-fg);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #${CARD_ID} .wn-again:hover { background: rgba(128, 128, 128, 0.15); }
     #${CARD_ID} .wn-auto {
       display: flex;
       align-items: center;
@@ -423,6 +441,16 @@
     const who = el('div', 'wn-who', '');
     const print = el('div', 'wn-print', '');
 
+    // Reprint last label (Pablo, 2026-10-22: "I sometimes bundle up 3-4 cars
+    // and each one needs the same label"): one tap per extra copy of the most
+    // recent sale's label. Shown only when printing is ready and there's a sale.
+    const again = el('button', 'wn-again', 'Reprint last label');
+    again.type = 'button';
+    again.addEventListener('click', () => {
+      const last = history[history.length - 1];
+      if (last) reprint(last);
+    });
+
     // Auto-print switch: the same `printOnClose` setting as the settings page.
     const auto = el('label', 'wn-auto');
     const autoInput = el('input');
@@ -444,9 +472,9 @@
     clearAll.addEventListener('click', () => removeCloses());
     histHead.append(el('span', null, 'History'), clearAll);
     const hist = el('ul', 'wn-hist');
-    body.append(title, meta, who, print, auto, histHead, hist);
+    body.append(title, meta, who, print, again, auto, histHead, hist);
     card.append(head, body);
-    cardEls = { state, title, meta, who, print, hist, autoInput, auto };
+    cardEls = { state, title, meta, who, print, hist, autoInput, auto, again };
     mountCard();
     renderHistory();
   }
@@ -515,6 +543,7 @@
 
   function renderHistory() {
     if (!cardEls) return;
+    updateAgain();
     const items = history.slice(-HISTORY_SHOWN).reverse();
     if (!items.length) {
       cardEls.hist.replaceChildren(el('li', 'wn-empty', 'No closes seen yet'));
@@ -566,15 +595,32 @@
     b.append(svg);
     b.addEventListener('click', (ev) => {
       ev.stopPropagation();
-      if (cardEls) {
-        cardEls.print.textContent = `Reprinting ${h.title}…`;
-        cardEls.print.dataset.ok = '';
-      }
-      try {
-        chrome.runtime.sendMessage({ type: 'dymo-print', entry: h }, () => void chrome.runtime.lastError);
-      } catch (_) { /* orphaned copy; stand-down will follow */ }
+      reprint(h);
     });
     return b;
+  }
+
+  // Print one sale's label again -- the history row icons and the
+  // "Reprint last label" button both land here.
+  function reprint(h) {
+    if (cardEls) {
+      cardEls.print.textContent = `Reprinting ${h.title}…`;
+      cardEls.print.dataset.ok = '';
+    }
+    try {
+      chrome.runtime.sendMessage({ type: 'dymo-print', entry: h }, () => void chrome.runtime.lastError);
+    } catch (_) { /* orphaned copy; stand-down will follow */ }
+  }
+
+  // The reprint button follows the same gate as the auto-print switch, plus
+  // there has to be a sale to reprint; its label names that sale.
+  function updateAgain() {
+    if (!cardEls) return;
+    const last = history[history.length - 1];
+    cardEls.again.style.display = printerReady && last ? '' : 'none';
+    const text = last ? `Reprint last label · ${last.title}` : 'Reprint last label';
+    if (cardEls.again.textContent !== text) cardEls.again.textContent = text;
+    cardEls.again.title = last ? `Print the label for ${last.title} again` : '';
   }
 
   function removeCard() {
@@ -695,6 +741,7 @@
         void chrome.runtime.lastError;
         printerReady = !!res?.ready;
         if (cardEls) cardEls.auto.style.display = printerReady ? '' : 'none';
+        updateAgain();
       });
     } catch (_) { /* orphaned copy */ }
   }
