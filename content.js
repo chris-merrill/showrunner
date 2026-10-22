@@ -24,6 +24,7 @@
   // doesn't touch attributes outside its vdom, so this survives re-renders.
   const ATTR = 'data-wch-q';
   const TAB_ID = 'wch-tab';
+  const PANEL_ID = 'wch-panel';
   const CLS = { tag: 'wch-tag', label: 'wch-label', btn: 'wch-x' };
 
   const NATIVE_TABS = ['Chat', 'Watching', 'Activity'];
@@ -61,6 +62,12 @@
   // content, never by DOM node.
   const resolved = new Set();
 
+  // Every question seen this show, in arrival order: key → { user, text }.
+  // The Questions panel renders from this, not from the DOM — so a question
+  // that has scrolled out of Whatnot's virtualised list is still listed.
+  const questions = new Map();
+  let panelDirty = true;
+
   let attachAttempts = 0;
   let detecting = false;
   let scheduled = false;
@@ -81,7 +88,7 @@
 
   // Stamped on <html> so a stale content script from a previous extension
   // reload is identifiable: check document.documentElement.dataset.wchV.
-  const VERSION = '0.12.0';
+  const VERSION = '0.13.0';
 
   const mark = (state) => {
     try {
@@ -199,10 +206,75 @@
       [${ATTR}]:hover .${CLS.btn} { display: inline-block; }
       .${CLS.btn}:hover { background: #e5e7eb; color: #111827; }
 
-      /* Questions-only filter. 'revert' rather than a fixed display value —
-         the rows are flex children and hardcoding 'block' would reflow them. */
-      [data-wch-only] > * { display: none !important; }
-      [data-wch-only] > [${ATTR}] { display: revert !important; }
+      /* Questions panel. Our own element on <body>, laid over the chat region —
+         never a filter on Whatnot's list. Hiding rows inside their virtualised
+         list made it re-measure, render more rows, re-scroll, and repeat: the
+         flashing loop. Colours are set inline from the chat's computed style. */
+      /* The panel itself is the dimmed backdrop; the card sits inset inside it
+         so a sliver of chat shows round the edge — it reads as a sheet laid
+         over the chat, not a patch covering it. */
+      #${PANEL_ID} {
+        position: fixed;
+        z-index: 2147483000;
+        box-sizing: border-box;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.28);
+        font: 400 14px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      }
+      #${PANEL_ID} .wch-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        box-sizing: border-box;
+        border: 1px solid rgba(128, 128, 128, 0.25);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+      #${PANEL_ID} .wch-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 10px 10px 14px;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+      }
+      #${PANEL_ID} .wch-title { font-weight: 700; font-size: 15px; }
+      #${PANEL_ID} .wch-open { opacity: 0.55; font-size: 13px; flex: 1; }
+      #${PANEL_ID} .wch-close {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-size: 18px;
+        line-height: 1;
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        cursor: pointer;
+        opacity: 0.7;
+      }
+      #${PANEL_ID} .wch-close:hover { background: rgba(128, 128, 128, 0.18); opacity: 1; }
+      #${PANEL_ID} .wch-list { flex: 1; overflow-y: auto; padding: 4px 8px 8px; }
+      #${PANEL_ID} .wch-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 8px;
+        margin: 4px 0;
+        border-radius: 8px;
+        background: rgba(234, 88, 12, 0.06);
+        box-shadow: inset 2px 0 0 #ea580c;
+      }
+      #${PANEL_ID} .wch-item[data-resolved] {
+        background: transparent;
+        box-shadow: inset 2px 0 0 rgba(128, 128, 128, 0.35);
+        opacity: 0.5;
+      }
+      #${PANEL_ID} .wch-body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+      #${PANEL_ID} .wch-user { font-weight: 600; margin-right: 6px; }
+      #${PANEL_ID} .wch-empty { opacity: 0.55; text-align: center; padding: 24px 8px; }
+      #${PANEL_ID} .${CLS.btn} { display: inline-block; flex: none; }
 
       /* currentColor, not a brand colour of ours — the tab inherits Whatnot's
          own text colour so the active underline matches their tabs. */
@@ -241,18 +313,191 @@
     return tabs.length >= 2 ? tabs[0].parentElement : null;
   }
 
-  function applyFilter() {
-    if (!rowList) return;
-    if (questionsOnly && settings.questionsTab) rowList.setAttribute('data-wch-only', '1');
-    else rowList.removeAttribute('data-wch-only');
+  // The chat column's background, found by walking up past transparent
+  // wrappers, so the panel matches Whatnot's light or dark theme.
+  function chatColors() {
+    let bg = '';
+    for (let el = region; el && el !== document.documentElement; el = el.parentElement) {
+      const c = getComputedStyle(el).backgroundColor;
+      if (c && c !== 'transparent' && !/rgba\(.*,\s*0\)$/.test(c)) {
+        bg = c;
+        break;
+      }
+    }
+    return { bg: bg || getComputedStyle(document.body).backgroundColor || '#fff',
+             fg: region ? getComputedStyle(region).color : '' };
   }
+
+  // The scrolling viewport the rows live in — just the messages, not the tab
+  // bar or composer. Covering the whole region put the panel over the
+  // Chat/Watching/Activity tabs, and it swallowed the click meant to close it.
+  function messageViewport() {
+    for (let el = rowList; el && el !== region?.parentElement; el = el.parentElement) {
+      const oy = getComputedStyle(el).overflowY;
+      if (oy === 'auto' || oy === 'scroll') return el;
+    }
+    return region;
+  }
+
+  function placePanel(panel) {
+    const vp = region && document.contains(region) ? messageViewport() : null;
+    const r = vp && vp.getBoundingClientRect();
+    if (!r || r.width < 40 || r.height < 60) {
+      panel.style.display = 'none';
+      return;
+    }
+
+    // Belt and braces: never start above the bottom of the tab bar.
+    let top = r.top;
+    const bar = findTabBar();
+    if (bar) {
+      const b = bar.getBoundingClientRect();
+      const overlapsX = b.left < r.right && b.right > r.left;
+      if (overlapsX && b.bottom > top && b.top < r.bottom) top = b.bottom;
+    }
+
+    panel.style.display = '';
+    panel.style.top = top + 'px';
+    panel.style.left = r.left + 'px';
+    panel.style.width = r.width + 'px';
+    panel.style.height = Math.max(0, r.bottom - top) + 'px';
+  }
+
+  function toggleResolved(key) {
+    if (resolved.has(key)) resolved.delete(key);
+    else resolved.add(key);
+    panelDirty = true;
+    scheduleDecorate();
+  }
+
+  // Questions that count: still questions after any classifier verdict.
+  const listedQuestions = () =>
+    [...questions].filter(([key, q]) => shouldHighlight(key, q.text));
+
+  function buildPanel() {
+    const panel = document.createElement('div');
+    panel.id = PANEL_ID;
+    // A click on the dimmed margin (the panel, not the card) closes it.
+    panel.addEventListener('click', (e) => {
+      if (e.target === panel) setQuestionsOnly(false);
+    });
+
+    const card = document.createElement('div');
+    card.className = 'wch-card';
+    const { bg, fg } = chatColors();
+    card.style.background = bg;
+    if (fg) card.style.color = fg;
+
+    const head = document.createElement('div');
+    head.className = 'wch-head';
+    const title = document.createElement('span');
+    title.className = 'wch-title';
+    title.textContent = 'Questions';
+    const open = document.createElement('span');
+    open.className = 'wch-open';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'wch-close';
+    close.setAttribute('aria-label', 'Close questions');
+    close.textContent = '✕';
+    close.addEventListener('click', () => setQuestionsOnly(false));
+    head.append(title, open, close);
+
+    const list = document.createElement('div');
+    list.className = 'wch-list';
+
+    card.append(head, list);
+    panel.append(card);
+    document.body.append(panel);
+    return panel;
+  }
+
+  function renderPanel() {
+    let panel = document.getElementById(PANEL_ID);
+    if (!(questionsOnly && settings.questionsTab)) {
+      if (panel) panel.remove();
+      return;
+    }
+
+    const fresh = !panel;
+    if (fresh) {
+      panel = buildPanel();
+      panelDirty = true;
+    }
+    placePanel(panel);
+    if (!panelDirty) return;
+    panelDirty = false;
+
+    const list = panel.querySelector('.wch-list');
+    const atBottom = fresh || list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+    const items = listedQuestions();
+    const openCount = items.filter(([key]) => !resolved.has(key)).length;
+    panel.querySelector('.wch-open').textContent = `· ${openCount} open`;
+    list.replaceChildren();
+
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'wch-empty';
+      empty.textContent = 'No questions yet';
+      list.append(empty);
+    }
+
+    for (const [key, q] of items) {
+      const isResolved = resolved.has(key);
+      const item = document.createElement('div');
+      item.className = 'wch-item';
+      if (isResolved) item.setAttribute('data-resolved', '');
+
+      const body = document.createElement('div');
+      body.className = 'wch-body';
+      if (q.user) {
+        const user = document.createElement('span');
+        user.className = 'wch-user';
+        user.textContent = q.user;
+        body.append(user);
+      }
+      body.append(q.text);
+      item.append(body);
+
+      if (settings.allowResolve) {
+        const btn = document.createElement('button');
+        btn.className = CLS.btn;
+        btn.type = 'button';
+        btn.textContent = isResolved ? 'Reopen' : 'Mark as resolved';
+        btn.addEventListener('click', () => toggleResolved(key));
+        item.append(btn);
+      }
+      list.append(item);
+    }
+
+    if (atBottom) list.scrollTop = list.scrollHeight;
+  }
+
+  function setQuestionsOnly(on) {
+    questionsOnly = on;
+    panelDirty = true;
+    renderPanel();
+    syncTab(document.getElementById(TAB_ID));
+  }
+
+  // The panel is position:fixed, so it has to follow the chat when the window
+  // resizes or the page scrolls.
+  const reposition = () => {
+    const panel = document.getElementById(PANEL_ID);
+    if (panel) placePanel(panel);
+  };
+  window.addEventListener('resize', reposition);
+  window.addEventListener('scroll', reposition, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && questionsOnly) setQuestionsOnly(false);
+  });
 
   function syncTab(tab) {
     if (!tab) return;
     if (questionsOnly) tab.setAttribute('data-wch-active', '1');
     else tab.removeAttribute('data-wch-active');
 
-    const count = rowList ? rowList.querySelectorAll(`[${ATTR}]:not([${ATTR}="resolved"])`).length : 0;
+    const count = listedQuestions().filter(([key]) => !resolved.has(key)).length;
     const badge = tab.querySelector('.wch-count');
     const want = count ? String(count) : '';
     if (badge && badge.textContent !== want) badge.textContent = want;
@@ -262,7 +507,8 @@
     const tab = document.getElementById(TAB_ID);
     if (tab) tab.remove();
     questionsOnly = false;
-    if (rowList) rowList.removeAttribute('data-wch-only');
+    const panel = document.getElementById(PANEL_ID);
+    if (panel) panel.remove();
   }
 
   // The tab is rebuilt if React drops it. Its className is copied from a real
@@ -299,9 +545,7 @@
     tab.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      questionsOnly = !questionsOnly;
-      applyFilter();
-      syncTab(tab);
+      setQuestionsOnly(!questionsOnly);
     });
 
     bar.append(tab);
@@ -314,9 +558,7 @@
         'click',
         (e) => {
           if (e.target.closest(`#${TAB_ID}`)) return;
-          questionsOnly = false;
-          applyFilter();
-          syncTab(document.getElementById(TAB_ID));
+          if (questionsOnly) setQuestionsOnly(false);
         },
         true
       );
@@ -337,7 +579,7 @@
   // message gets queued for classification a second time — a duplicate billed
   // call for every avatar that loads late. Stripping to the message body makes
   // the key stable, and sends the classifier cleaner input.
-  function messageOf(row) {
+  function partsOf(row) {
     const clone = row.cloneNode(true);
     clone
       .querySelectorAll('img, svg, picture, video, [class*="rounded-full"], [class*="avatar"]')
@@ -348,19 +590,20 @@
       .map((e) => (e.textContent || '').replace(/\s+/g, ' ').trim())
       .filter(Boolean);
 
-    if (parts.length < 2) return textOf(clone).slice(0, 200);
+    if (parts.length < 2) return { user: '', body: textOf(clone).slice(0, 200) };
 
     // parts[0] is the username when it's a single token; the rest is the body,
     // minus badge chips that sit between the name and the message.
-    const body = (/^\S{1,30}$/.test(parts[0]) ? parts.slice(1) : parts)
+    const hasUser = /^\S{1,30}$/.test(parts[0]);
+    const body = (hasUser ? parts.slice(1) : parts)
       .filter((p) => !BADGE.test(p))
       .join(' ')
       .trim();
 
-    return (body || textOf(clone)).slice(0, 200);
+    return { user: hasUser ? parts[0] : '', body: (body || textOf(clone)).slice(0, 200) };
   }
 
-  const keyOf = (row) => messageOf(row);
+  const keyOf = (row) => partsOf(row).body;
   const isQuestion = (t) => /\?\s*$/.test(t);
 
   // Local rule is the instant answer; a verdict from diecastr supersedes it when
@@ -406,6 +649,7 @@
 
         if (res && typeof res.isQuestion === 'boolean') {
           verdicts.set(key, res.isQuestion);
+          panelDirty = true;
           scheduleDecorate();
         } else if (res?.status === 429) {
           // Key paused by the owner — put it back and stop asking for a while.
@@ -457,9 +701,7 @@
         // Whatnot puts click handlers on the row itself (profile popovers etc).
         e.preventDefault();
         e.stopPropagation();
-        if (resolved.has(key)) resolved.delete(key);
-        else resolved.add(key);
-        scheduleDecorate();
+        toggleResolved(key);
       });
       tag.append(btn);
     }
@@ -473,7 +715,7 @@
     if (!raw || raw.length > MAX_ROW_CHARS) return;
 
     // key IS the message body — classify and match on that, not the raw row.
-    const key = keyOf(row);
+    const { user, body: key } = partsOf(row);
     const text = key;
     if (text.length >= 2) queueForClassification(key, text);
 
@@ -498,6 +740,11 @@
       return;
     }
     offCandidate.delete(row);
+
+    if (!questions.has(key)) {
+      questions.set(key, { user, text });
+      panelDirty = true;
+    }
 
     // Write only on change — an unconditional setAttribute every pass is a DOM
     // write per row per message, which is its own source of churn.
@@ -560,7 +807,7 @@
     try {
       for (const row of Array.from(rowList.children)) decorate(row);
       ensureTab();
-      applyFilter();
+      renderPanel();
     } finally {
       if (observer && region) {
         observer.observe(region, { childList: true, subtree: true, characterData: true });
@@ -592,9 +839,6 @@
   function removeAllDecorations() {
     for (const el of document.querySelectorAll(`[${ATTR}]`)) el.removeAttribute(ATTR);
     for (const el of document.querySelectorAll(`.${CLS.tag}`)) el.remove();
-    for (const el of document.querySelectorAll('[data-wch-only]')) {
-      el.removeAttribute('data-wch-only');
-    }
     removeTab();
     const style = document.getElementById('wch-style');
     if (style) style.remove();
@@ -711,6 +955,8 @@
     observer = null;
     region = null;
     rowList = null;
+    questions.clear();
+    panelDirty = true;
   }
 
   // ----------------------------------------------------------------- settings
@@ -731,6 +977,7 @@
       return;
     }
     injectStyle(); // re-add if a previous untick removed it
+    panelDirty = true;
     scheduleDecorate();
   });
 
@@ -741,6 +988,7 @@
     }
     if (msg?.type === 'clearResolved') {
       resolved.clear();
+      panelDirty = true;
       scheduleDecorate();
       sendResponse({ ok: true });
       return true;
