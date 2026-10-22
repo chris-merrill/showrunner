@@ -220,3 +220,19 @@ time so `capture.js` is injected alongside `content.js`.
 `git log` — v0.4.0 was a side-panel mirror of chat (usernames, relative ages,
 question filter, CSV export). Replaced by in-place highlighting in v0.5.0; the
 tag is still in history if any of it is wanted back.
+
+## Label catalog
+
+`LABEL_CATALOG` in `background.js` lists 25 DYMO die-cut labels (part number,
+DYMO paper name, short and long side). The DieCutLabel geometry, the font sizes
+and the names in the settings page are all derived from it, and the Mac bridge's
+`PAPERS` mirrors it, so a new label is added in one place (two with the bridge).
+The paper names follow DYMO's own paper list; if a driver rejects one, fix the
+name there. Only 30252, 30336 and 30334 have been printed through DYMO's own
+format so far; the rest are geometry by the numbers.
+
+The card's **Auto-print** switch only appears when printing is actually ready:
+a printer chosen in settings, the DYMO service (or Mac bridge) answering, and
+that printer listed as connected. Background answers `printer-status` (cached
+60 s, re-checked after any failed print, on settings changes, and once a minute
+while capture is on).

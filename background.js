@@ -166,42 +166,42 @@ async function dymoPrinters() {
 // the driver's paper list exactly), short and long side in inches. Drawn in
 // landscape; geometry below is derived (twips, 1440/in).
 const LABEL_CATALOG = [
-  ['30252', '30252 Address', 1.125, 3.5, 'Address'],
-  ['30320', '30320 Address', 1.125, 3.5, 'Address'],
-  ['30251', '30251 Address', 1.125, 3.5, 'Address'],
-  ['30321', '30321 Large Address', 1.4, 3.5, 'Large Address'],
-  ['30323', '30323 Shipping', 2.125, 4, 'Shipping'],
-  ['30256', '30256 Shipping', 2.3125, 4, 'Shipping'],
-  ['1744907', '1744907 4 in x 6 in Shipping', 4, 6, 'Shipping (4XL only)'],
-  ['30324', '30324 Diskette', 2.125, 2.75, 'Diskette'],
-  ['30327', '30327 File Folder', 0.5625, 3.4375, 'File Folder'],
-  ['30330', '30330 Return Address', 0.75, 2, 'Return Address'],
-  ['30332', '30332 1 in x 1 in', 1, 1, 'Multipurpose'],
-  ['30333', '30333 1/2 in x 1 in', 0.5, 1, 'Multipurpose'],
-  ['30334', '30334 2-1/4 in x 1-1/4 in', 1.25, 2.25, 'Multipurpose'],
-  ['30336', '30336 1 in x 2-1/8 in', 1, 2.125, 'Multipurpose'],
-  ['30345', '30345 3/4 in x 2-1/2 in', 0.75, 2.5, 'Multipurpose'],
-  ['30346', '30346 1/2 in x 1-7/8 in', 0.5, 1.875, 'Multipurpose'],
-  ['30347', '30347 1 in x 1-1/2 in', 1, 1.5, 'Book Spine'],
-  ['30348', '30348 9/10 in x 1-1/4 in', 0.9, 1.25, 'Multipurpose'],
-  ['30373', '30373 Price Tag', 0.875, 0.9375, 'Price Tag'],
-  ['30374', '30374 Appointment Card', 2, 3.5, 'Appointment / Business Card'],
-  ['30376', '30376 Hanging File Insert', 0.5625, 2, 'Hanging File Insert'],
-  ['30857', '30857 Badge Label', 2.25, 4, 'Name Badge'],
-  ['30856', '30856 Badge Card', 2.3125, 4, 'Badge Card'],
-  ['30383', '30383 PC Postage 3-Part', 2.25, 7, 'Postage'],
-  ['30384', '30384 2-Part Internet Postage', 2.3125, 7.5, 'Postage'],
+  // Names and sizes are DYMO's own, from the LabelWriter 450 driver's paper list.
+  ['30252', '30252 Address', 1.09, 3.5, 'Address', '3½ × 1⅛ in'],
+  ['30320', '30320 Address', 1.0967, 3.5, 'Address', '3½ × 1⅛ in'],
+  ['99010', '99010 Standard Address', 1.0967, 3.5, 'Standard Address', '3½ × 1⅛ in'],
+  ['30321', '30321 Large Address', 1.41, 3.48, 'Large Address', '3½ × 1⅖ in'],
+  ['99012', '99012 Large Address', 1.4067, 3.4867, 'Large Address', '3½ × 1⅖ in'],
+  ['30323', '30323 Shipping', 2.1267, 3.97, 'Shipping', '4 × 2⅛ in'],
+  ['99014', '99014 Shipping', 2.1267, 3.97, 'Shipping', '4 × 2⅛ in'],
+  ['30256', '30256 Shipping', 2.3133, 4, 'Shipping', '4 × 2⁵⁄₁₆ in'],
+  ['1744907', '1744907 4 in x 6 in Shipping', 4, 6, 'Shipping (4XL only)', '6 × 4 in'],
+  ['30324', '30324 Diskette', 2.1267, 2.75, 'Diskette', '2¾ × 2⅛ in'],
+  ['30327', '30327 File Folder', 0.7833, 3.4367, 'File Folder', '3⁷⁄₁₆ × ⁹⁄₁₆ in, 2 up'],
+  ['30330', '30330 Return Address', 0.75, 2, 'Return Address', '2 × ¾ in'],
+  ['11352', '11352 Return Address Int', 1, 2.1267, 'Return Address (Intl)', '2⅛ × 1 in'],
+  ['30332', '30332 1 in x 1 in', 1, 1, 'Multipurpose', '1 × 1 in'],
+  ['30333', '30333 1/2 in x 1 in, 2 up', 1, 1, 'Multipurpose (2 up)', '1 × ½ in, 2 up'],
+  ['30334', '30334 2-1/4 in x 1-1/4 in', 1.25, 2.25, 'Multipurpose', '2¼ × 1¼ in'],
+  ['30336', '30336 1 in x 2-1/8 in', 1, 2.1267, 'Multipurpose', '2⅛ × 1 in'],
+  ['11354', '11354 Multi-Purpose', 1.25, 2.25, 'Multipurpose (Intl)', '2¼ × 1¼ in'],
+  ['30345', '30345 3/4 in x 2-1/2 in', 0.75, 2.5, 'Multipurpose', '2½ × ¾ in'],
+  ['30346', '30346 1/2 in x 1-7/8 in', 0.5, 1.8767, 'Multipurpose', '1⅞ × ½ in'],
+  ['30347', '30347 1 in x 1-1/2 in', 1, 1.5, 'Book Spine', '1½ × 1 in'],
+  ['30348', '30348 9/10 in x 1-1/4 in', 0.9, 1.25, 'Multipurpose', '1¼ × ⁹⁄₁₀ in'],
+  ['30373', '30373 Price Tag Label', 0.9767, 2, 'Price Tag', '2 × ⁷⁄₈ in, 2 up'],
+  ['30374', '30374 Appointment Card', 2, 3.5, 'Appointment / Business Card', '3½ × 2 in'],
+  ['30376', '30376 Hanging File Insert', 1.1, 2, 'Hanging File Insert', '2 × ⁹⁄₁₆ in, 2 up'],
+  ['30364', '30364 Name Badge Label', 2.3133, 4, 'Name Badge', '4 × 2¼ in'],
+  ['30857', '30857 Badge Label', 2.3133, 4, 'Badge Label', '4 × 2¼ in'],
+  ['30856', '30856 Badge Card Label', 2.4367, 4.05, 'Badge Card', '4 × 2⁷⁄₁₆ in'],
+  ['30365', '30365 Name Badge Card', 2.32, 3.5, 'Name Badge Card', '3½ × 2⁵⁄₁₆ in'],
+  ['30383', '30383 PC Postage 3-Part', 2.25, 7, 'Postage', '7 × 2¼ in'],
+  ['30384', '30384 PC Postage 2-Part', 2.3133, 7.5, 'Postage', '7½ × 2⁵⁄₁₆ in'],
 ];
 
-const frac = (n) => {
-  const whole = Math.floor(n), r = n - whole;
-  const map = { 0.125: '⅛', 0.25: '¼', 0.3125: '⁵⁄₁₆', 0.375: '⅜', 0.4: '⅖', 0.4375: '⁷⁄₁₆', 0.5: '½', 0.5625: '⁹⁄₁₆', 0.625: '⅝', 0.75: '¾', 0.875: '⅞', 0.9: '⁹⁄₁₀', 0.9375: '¹⁵⁄₁₆' };
-  const f = map[Math.round(r * 10000) / 10000] || (r ? r.toFixed(2).slice(1) : '');
-  return `${whole || ''}${f}` || '0';
-};
-
 // {kind: {paper, w, h, bounds, title, body, label}} for the XML builder and the settings page.
-const LABELS = Object.fromEntries(LABEL_CATALOG.map(([code, paper, short, long, use]) => {
+const LABELS = Object.fromEntries(LABEL_CATALOG.map(([code, paper, short, long, use, nominal]) => {
   const W = Math.round(short * 1440), H = Math.round(long * 1440);
   const mx = Math.round(Math.min(0.14, short * 0.12) * 1440), my = Math.round(Math.min(0.1, short * 0.1) * 1440);
   const title = Math.max(7, Math.min(20, Math.round(short * 12)));
@@ -209,7 +209,7 @@ const LABELS = Object.fromEntries(LABEL_CATALOG.map(([code, paper, short, long, 
     paper, w: W, h: H,
     bounds: [mx + 120, my, H - 2 * mx - 120, W - 2 * my],
     title, body: Math.max(6, Math.round(title * 0.72)),
-    label: `${code} ${use} (${frac(long)} × ${frac(short)} in)`,
+    label: `${code} ${use} (${nominal})`,
   }];
 }));
 
@@ -283,6 +283,30 @@ async function dymoPrint(entry) {
   return true;
 }
 
+// Is label printing actually set up and working right now? A printer chosen
+// in settings, the DYMO service answering, and that printer in its list.
+// Cached for a minute; the cards show the auto-print switch only when ready.
+let readyCache = { at: 0, result: null };
+async function printerReady(force) {
+  if (!force && readyCache.result && Date.now() - readyCache.at < 60000) return readyCache.result;
+  let result;
+  try {
+    const { settings = {} } = await chrome.storage.local.get('settings');
+    if (!settings.printerName) result = { ready: false, reason: 'no printer chosen' };
+    else {
+      const { printers } = await dymoPrinters();
+      const p = printers.find((x) => x.name === settings.printerName);
+      if (!p) result = { ready: false, reason: `${settings.printerName} not listed by the DYMO service` };
+      else if (!p.connected) result = { ready: false, reason: `${settings.printerName} not connected` };
+      else result = { ready: true, printer: p.name };
+    }
+  } catch (err) {
+    result = { ready: false, reason: err.message };
+  }
+  readyCache = { at: Date.now(), result };
+  return result;
+}
+
 // Print for a close and report back to the tab's card and the event log.
 async function printForClose(entry, tabId) {
   const result = { ts: Date.now(), kind: 'print', title: entry.title, page: entry.page };
@@ -293,6 +317,7 @@ async function printForClose(entry, tabId) {
   } catch (err) {
     result.ok = false;
     result.data = `FAILED — ${entry.title} — ${err.message}`;
+    readyCache.at = 0; // re-check readiness on the next ask
   }
   captureQueue.push(result);
   if (!captureFlush) captureFlush = setTimeout(flushCapture, 300);
@@ -314,6 +339,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === 'label-catalog') {
     sendResponse({ ok: true, labels: LABEL_CATALOG.map(([code]) => ({ code, label: LABELS[code].label })) });
     return false;
+  }
+  if (msg?.type === 'printer-status') {
+    printerReady(!!msg.force).then(sendResponse);
+    return true;
   }
   if (msg?.type === 'dymo-printers') {
     dymoPrinters()

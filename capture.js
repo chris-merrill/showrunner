@@ -454,6 +454,7 @@
       } catch (_) { /* orphaned copy */ }
     });
     auto.append(el('span', null, 'Auto-print a label on each sale'), autoInput, el('i', 'wn-sw'));
+    auto.style.display = printerReady ? '' : 'none';
 
     const histHead = el('div', 'wn-hist-head');
     const clearAll = el('button', 'wn-clear', 'Clear all');
@@ -464,7 +465,7 @@
     const hist = el('ul', 'wn-hist');
     body.append(title, meta, who, print, auto, histHead, hist);
     card.append(head, body);
-    cardEls = { state, title, meta, who, print, hist, autoInput };
+    cardEls = { state, title, meta, who, print, hist, autoInput, auto };
     mountCard();
     renderHistory();
   }
@@ -486,6 +487,7 @@
     const r = msg.result;
     cardEls.print.textContent = r.ok ? `Label printed ${fmtTime(r.ts)} ✓` : `Label ${r.data}`;
     cardEls.print.dataset.ok = r.ok ? '1' : '0';
+    if (!r.ok) checkPrinter(true);
   });
 
   // Only touch the DOM when a value changed: every write is a mutation the
@@ -728,6 +730,7 @@
       observer.observe(document.body, { subtree: true, childList: true, characterData: true });
       ensureCard();
       startup = true;
+      checkPrinter(true);
       loadHistory().finally(() => { send('start', 'capture started'); tick(); });
     } else {
       observer.disconnect();
@@ -737,9 +740,23 @@
   }
 
   let printOnClose = false;
+  let printerReady = false;
+
+  // Ask background whether printing is set up and working; the auto-print
+  // switch only shows when it is (nothing to switch on otherwise).
+  function checkPrinter(force) {
+    try {
+      chrome.runtime.sendMessage({ type: 'printer-status', force: !!force }, (res) => {
+        void chrome.runtime.lastError;
+        printerReady = !!res?.ready;
+        if (cardEls) cardEls.auto.style.display = printerReady ? '' : 'none';
+      });
+    } catch (_) { /* orphaned copy */ }
+  }
 
   function applySettings(settings) {
     printOnClose = !!settings?.printOnClose;
+    if (enabled) checkPrinter(true);
     if (cardEls && cardEls.autoInput.checked !== printOnClose) cardEls.autoInput.checked = printOnClose;
     setEnabled(!!settings?.captureEnabled);
   }
@@ -784,6 +801,7 @@
     for (const stale of document.querySelectorAll(`#${TOGGLE_ID}, #${CARD_ID}`)) stale.remove();
     timers.push(setInterval(() => { if (orphaned()) return standDown(); tick(); }, TICK_MS));
     timers.push(setInterval(() => { if (orphaned()) return standDown(); ensureToggle(); positionToggle(); }, TICK_MS));
+    timers.push(setInterval(() => { if (enabled) checkPrinter(false); }, 60000));
     window.addEventListener('resize', positionToggle);
     ensureToggle();
     loadSetting();
