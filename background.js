@@ -162,13 +162,57 @@ async function dymoPrinters() {
   throw e;
 }
 
-const LABELS = {
-  // DYMO die-cut label geometry in twips (1440/in), drawn in landscape. The
-  // PaperName must match the driver's paper list exactly.
-  30252: { paper: '30252 Address', w: 1581, h: 5040, bounds: [332, 150, 4455, 1260], title: 14, body: 10 },
-  30336: { paper: '30336 1 in x 2-1/8 in', w: 1440, h: 3060, bounds: [130, 130, 2800, 1180], title: 12, body: 9 },
-  30334: { paper: '30334 2-1/4 in x 1-1/4 in', w: 1800, h: 3240, bounds: [150, 150, 2940, 1500], title: 13, body: 10 },
+// DYMO LabelWriter die-cut labels: part number, DYMO's paper name (must match
+// the driver's paper list exactly), short and long side in inches. Drawn in
+// landscape; geometry below is derived (twips, 1440/in).
+const LABEL_CATALOG = [
+  ['30252', '30252 Address', 1.125, 3.5, 'Address'],
+  ['30320', '30320 Address', 1.125, 3.5, 'Address'],
+  ['30251', '30251 Address', 1.125, 3.5, 'Address'],
+  ['30321', '30321 Large Address', 1.4, 3.5, 'Large Address'],
+  ['30323', '30323 Shipping', 2.125, 4, 'Shipping'],
+  ['30256', '30256 Shipping', 2.3125, 4, 'Shipping'],
+  ['1744907', '1744907 4 in x 6 in Shipping', 4, 6, 'Shipping (4XL only)'],
+  ['30324', '30324 Diskette', 2.125, 2.75, 'Diskette'],
+  ['30327', '30327 File Folder', 0.5625, 3.4375, 'File Folder'],
+  ['30330', '30330 Return Address', 0.75, 2, 'Return Address'],
+  ['30332', '30332 1 in x 1 in', 1, 1, 'Multipurpose'],
+  ['30333', '30333 1/2 in x 1 in', 0.5, 1, 'Multipurpose'],
+  ['30334', '30334 2-1/4 in x 1-1/4 in', 1.25, 2.25, 'Multipurpose'],
+  ['30336', '30336 1 in x 2-1/8 in', 1, 2.125, 'Multipurpose'],
+  ['30345', '30345 3/4 in x 2-1/2 in', 0.75, 2.5, 'Multipurpose'],
+  ['30346', '30346 1/2 in x 1-7/8 in', 0.5, 1.875, 'Multipurpose'],
+  ['30347', '30347 1 in x 1-1/2 in', 1, 1.5, 'Book Spine'],
+  ['30348', '30348 9/10 in x 1-1/4 in', 0.9, 1.25, 'Multipurpose'],
+  ['30373', '30373 Price Tag', 0.875, 0.9375, 'Price Tag'],
+  ['30374', '30374 Appointment Card', 2, 3.5, 'Appointment / Business Card'],
+  ['30376', '30376 Hanging File Insert', 0.5625, 2, 'Hanging File Insert'],
+  ['30857', '30857 Badge Label', 2.25, 4, 'Name Badge'],
+  ['30856', '30856 Badge Card', 2.3125, 4, 'Badge Card'],
+  ['30383', '30383 PC Postage 3-Part', 2.25, 7, 'Postage'],
+  ['30384', '30384 2-Part Internet Postage', 2.3125, 7.5, 'Postage'],
+];
+
+const frac = (n) => {
+  const whole = Math.floor(n), r = n - whole;
+  const map = { 0.125: '⅛', 0.25: '¼', 0.3125: '⁵⁄₁₆', 0.375: '⅜', 0.4: '⅖', 0.4375: '⁷⁄₁₆', 0.5: '½', 0.5625: '⁹⁄₁₆', 0.625: '⅝', 0.75: '¾', 0.875: '⅞', 0.9: '⁹⁄₁₀', 0.9375: '¹⁵⁄₁₆' };
+  const f = map[Math.round(r * 10000) / 10000] || (r ? r.toFixed(2).slice(1) : '');
+  return `${whole || ''}${f}` || '0';
 };
+
+// {kind: {paper, w, h, bounds, title, body, label}} for the XML builder and the settings page.
+const LABELS = Object.fromEntries(LABEL_CATALOG.map(([code, paper, short, long, use]) => {
+  const W = Math.round(short * 1440), H = Math.round(long * 1440);
+  const mx = Math.round(Math.min(0.14, short * 0.12) * 1440), my = Math.round(Math.min(0.1, short * 0.1) * 1440);
+  const title = Math.max(7, Math.min(20, Math.round(short * 12)));
+  return [code, {
+    paper, w: W, h: H,
+    bounds: [mx + 120, my, H - 2 * mx - 120, W - 2 * my],
+    title, body: Math.max(6, Math.round(title * 0.72)),
+    label: `${code} ${use} (${frac(long)} × ${frac(short)} in)`,
+  }];
+}));
+
 
 const xmlEscape = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -265,6 +309,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (settings?.printOnClose) printForClose(msg.event, sender.tab?.id);
       });
     }
+    return false;
+  }
+  if (msg?.type === 'label-catalog') {
+    sendResponse({ ok: true, labels: LABEL_CATALOG.map(([code]) => ({ code, label: LABELS[code].label })) });
     return false;
   }
   if (msg?.type === 'dymo-printers') {

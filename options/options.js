@@ -88,7 +88,7 @@ async function load() {
   el.token.value = current.token;
   el.aiConfig.hidden = !current.aiEnabled;
   el.captureConfig.hidden = !current.captureEnabled;
-  el.labelKind.value = current.labelKind;
+  fillLabelKinds().then(() => { el.labelKind.value = current.labelKind; });
   el.sellerName.value = current.sellerName;
   setPrinterOptions([], current.printerName);
 }
@@ -262,6 +262,21 @@ function probeDymo() {
       resolve(res || { ok: false, error: 'no answer from the extension', details: [] });
     });
   });
+}
+
+// The label list lives in background.js (one source of truth for geometry).
+let labelKindsFilled = null;
+function fillLabelKinds() {
+  if (labelKindsFilled) return labelKindsFilled;
+  labelKindsFilled = new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'label-catalog' }, (res) => {
+      void chrome.runtime.lastError;
+      const labels = res?.labels || [{ code: '30252', label: '30252 Address (3½ × 1⅛ in)' }];
+      el.labelKind.replaceChildren(...labels.map((l) => Object.assign(document.createElement('option'), { value: l.code, textContent: l.label })));
+      resolve();
+    });
+  });
+  return labelKindsFilled;
 }
 
 // Fill the printer <select>; keep the saved name selectable even if it isn't

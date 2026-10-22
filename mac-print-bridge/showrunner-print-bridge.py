@@ -34,10 +34,35 @@ FONT_REG = "/System/Library/Fonts/Supplemental/Arial.ttf"
 FONT_BOLD = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
 
 # DYMO PaperName -> (width in, height in, CUPS PageSize for the LW450 PPD)
+# DYMO PaperName -> (long in, short in, CUPS PageSize or None). Same list as the
+# extension's LABEL_CATALOG. Verified PPD page names are given; the rest print
+# as a custom size.
 PAPERS = {
     "30252 Address": (3.5, 1.125, "w79h252"),
-    "30336 1 in x 2-1/8 in": (2.125, 1.0, "w72h154"),
+    "30320 Address": (3.5, 1.125, "w79h252"),
+    "30251 Address": (3.5, 1.125, "w79h252"),
+    "30321 Large Address": (3.5, 1.4, None),
+    "30323 Shipping": (4.0, 2.125, None),
+    "30256 Shipping": (4.0, 2.3125, None),
+    "1744907 4 in x 6 in Shipping": (6.0, 4.0, None),
+    "30324 Diskette": (2.75, 2.125, None),
+    "30327 File Folder": (3.4375, 0.5625, None),
+    "30330 Return Address": (2.0, 0.75, None),
+    "30332 1 in x 1 in": (1.0, 1.0, None),
+    "30333 1/2 in x 1 in": (1.0, 0.5, None),
     "30334 2-1/4 in x 1-1/4 in": (2.25, 1.25, "30334_2-1_4_in_x_1-1_4_in"),
+    "30336 1 in x 2-1/8 in": (2.125, 1.0, "w72h154"),
+    "30345 3/4 in x 2-1/2 in": (2.5, 0.75, None),
+    "30346 1/2 in x 1-7/8 in": (1.875, 0.5, None),
+    "30347 1 in x 1-1/2 in": (1.5, 1.0, None),
+    "30348 9/10 in x 1-1/4 in": (1.25, 0.9, None),
+    "30373 Price Tag": (0.9375, 0.875, None),
+    "30374 Appointment Card": (3.5, 2.0, None),
+    "30376 Hanging File Insert": (2.0, 0.5625, None),
+    "30857 Badge Label": (4.0, 2.25, None),
+    "30856 Badge Card": (4.0, 2.3125, None),
+    "30383 PC Postage 3-Part": (7.0, 2.25, None),
+    "30384 2-Part Internet Postage": (7.5, 2.3125, None),
 }
 DEFAULT_PAPER = "30252 Address"
 
@@ -127,11 +152,12 @@ def print_label(printer_desc, label_xml):
         raise ValueError(f"unknown printer {printer_desc!r}; known: {list(queues)}")
     paper, runs = parse_label(label_xml)
     img = render(paper, runs)
-    page = PAPERS.get(paper, PAPERS[DEFAULT_PAPER])[2]
+    long_in, short_in, page = PAPERS.get(paper, PAPERS[DEFAULT_PAPER])
+    media = f"PageSize={page}" if page else f"media=Custom.{short_in}x{long_in}in"
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
         img.save(f.name, dpi=(DPI, DPI))
         path = f.name
-    res = subprocess.run(["lp", "-d", queue, "-o", f"PageSize={page}", "-o", "fit-to-page", path],
+    res = subprocess.run(["lp", "-d", queue, "-o", media, "-o", "fit-to-page", path],
                          capture_output=True, text=True)
     if res.returncode != 0:
         raise RuntimeError(res.stderr.strip() or "lp failed")

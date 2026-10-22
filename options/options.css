@@ -19,6 +19,7 @@
     --text: #1a1826;
     --text-dim: #6b6785;
     --hit: #d9480f;
+    --accent-text: #7a5f00;
   }
 }
 
@@ -166,9 +167,13 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   appearance: none;
   border: 0;
   background: none;
-  color: var(--accent-text);
+  color: var(--text);
   font: inherit;
   font-weight: 550;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 5px;
@@ -176,8 +181,8 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .link:hover { background: rgba(255, 229, 0, 0.18); }
 
 .note { font-size: 12.5px; color: var(--text-dim); margin: 8px 0; }
-.note a { color: var(--accent-text); font-weight: 550; text-decoration: none; }
-.note a:hover { text-decoration: underline; }
+.note a { color: var(--text); font-weight: 550; text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.note a:hover { background: rgba(255, 229, 0, 0.25); }
 
 /* --------------------------------------------------------------- printers */
 
@@ -244,7 +249,7 @@ tr[data-kind="panel"] td.k { color: var(--accent-text); }
   font-size: 12.5px;
   color: var(--text-dim);
 }
-.foot a { color: var(--accent-text); font-weight: 550; text-decoration: none; }
-.foot a:hover { text-decoration: underline; }
+.foot a { color: var(--text); font-weight: 550; text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.foot a:hover { background: rgba(255, 229, 0, 0.25); }
 
 .note code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
