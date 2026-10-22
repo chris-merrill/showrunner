@@ -23,12 +23,9 @@
   // re-added a frame later, which is what the flicker was. React's diffing
   // doesn't touch attributes outside its vdom, so this survives re-renders.
   const ATTR = 'data-wch-q';
-  const TAB_ID = 'wch-tab';
-  const PANEL_ID = 'wch-panel';
+  const QCARD_ID = 'wch-qcard';
   const CLS = { tag: 'wch-tag', label: 'wch-label', btn: 'wch-x' };
 
-  const NATIVE_TABS = ['Chat', 'Watching', 'Activity'];
-  let questionsOnly = false;
 
   let settings = {
     highlightQuestions: true,
@@ -206,87 +203,77 @@
       [${ATTR}]:hover .${CLS.btn} { display: inline-block; }
       .${CLS.btn}:hover { background: #e5e7eb; color: #111827; }
 
-      /* Questions panel. Our own element on <body>, laid over the chat region —
-         never a filter on Whatnot's list. Hiding rows inside their virtualised
-         list made it re-measure, render more rows, re-scroll, and repeat: the
-         flashing loop. Colours are set inline from the chat's computed style. */
-      /* The panel itself is the dimmed backdrop; the card sits inset inside it
-         so a sliver of chat shows round the edge — it reads as a sheet laid
-         over the chat, not a patch covering it. */
-      #${PANEL_ID} {
-        position: fixed;
-        z-index: 2147483000;
+      /* Questions card: a sibling of Whatnot's chat card in the right column,
+         styled like theirs (white, 16px radius, 24px side padding). Never a
+         filter on Whatnot's virtualised list — that caused a flashing loop. */
+      #${QCARD_ID} {
+        --wch-fg: #000;
+        --wch-dim: #6b6b6b;
+        --wch-line: rgba(0, 0, 0, 0.08);
+        --wch-bg: #fff;
         box-sizing: border-box;
-        padding: 8px;
-        background: rgba(0, 0, 0, 0.28);
-        font: 400 14px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-      }
-      #${PANEL_ID} .wch-card {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        box-sizing: border-box;
-        border: 1px solid rgba(128, 128, 128, 0.25);
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        flex: none;
+        border-radius: 16px;
+        background: var(--wch-bg);
+        color: var(--wch-fg);
+        font: 400 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
         overflow: hidden;
       }
-      #${PANEL_ID} .wch-head {
+      html.dark #${QCARD_ID} { --wch-fg: #fff; --wch-dim: #a3a3a3; --wch-line: rgba(255, 255, 255, 0.1); --wch-bg: #171717; }
+      #${QCARD_ID} .wch-qhead {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 10px 10px 10px 14px;
-        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
-      }
-      #${PANEL_ID} .wch-title { font-weight: 700; font-size: 15px; }
-      #${PANEL_ID} .wch-open { opacity: 0.55; font-size: 13px; flex: 1; }
-      #${PANEL_ID} .wch-close {
-        appearance: none;
-        border: 0;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        font-size: 18px;
-        line-height: 1;
-        width: 28px;
-        height: 28px;
-        border-radius: 999px;
+        gap: 12px;
+        padding: 16px 24px;
         cursor: pointer;
-        opacity: 0.7;
+        user-select: none;
       }
-      #${PANEL_ID} .wch-close:hover { background: rgba(128, 128, 128, 0.18); opacity: 1; }
-      #${PANEL_ID} .wch-list { flex: 1; overflow-y: auto; padding: 4px 8px 8px; }
-      #${PANEL_ID} .wch-item {
+      #${QCARD_ID} .wch-qname { font-weight: 600; font-size: 16px; flex: 1; }
+      #${QCARD_ID} .wch-mark { flex: none; margin-right: -2px; }
+      #${QCARD_ID} .wch-qcount {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: rgba(128, 128, 128, 0.15);
+      }
+      #${QCARD_ID} .wch-qcount[data-open] { background: #f97316; color: #fff; }
+      #${QCARD_ID} .wch-qlist {
+        max-height: 260px;
+        overflow-y: auto;
+        margin: 0;
+        padding: 0 24px 12px;
+        list-style: none;
+        font-size: 14px;
+      }
+      #${QCARD_ID}[data-collapsed] .wch-qlist { display: none; }
+      #${QCARD_ID} .wch-qlist li {
         display: flex;
         align-items: flex-start;
-        gap: 8px;
-        padding: 6px 8px;
-        margin: 4px 0;
-        border-radius: 8px;
-        background: rgba(234, 88, 12, 0.06);
-        box-shadow: inset 2px 0 0 #ea580c;
+        gap: 10px;
+        padding: 8px 0;
+        border-top: 1px solid var(--wch-line);
       }
-      #${PANEL_ID} .wch-item[data-resolved] {
+      #${QCARD_ID} .wch-qlist li[data-resolved] { color: var(--wch-dim); }
+      #${QCARD_ID} .wch-qlist li[data-resolved] .wch-qtext { text-decoration: line-through; }
+      #${QCARD_ID} .wch-qbody { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+      #${QCARD_ID} .wch-quser { display: block; font-size: 12px; color: var(--wch-dim); }
+      #${QCARD_ID} .wch-qtext { font-weight: 500; }
+      #${QCARD_ID} .wch-qdone {
+        flex: none;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid var(--wch-line);
+        border-radius: 50%;
         background: transparent;
-        box-shadow: inset 2px 0 0 rgba(128, 128, 128, 0.35);
-        opacity: 0.5;
+        color: var(--wch-dim);
+        font: 600 14px/1 system-ui, sans-serif;
+        cursor: pointer;
       }
-      #${PANEL_ID} .wch-body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-      #${PANEL_ID} .wch-user { font-weight: 600; margin-right: 6px; }
-      #${PANEL_ID} .wch-empty { opacity: 0.55; text-align: center; padding: 24px 8px; }
-      #${PANEL_ID} .${CLS.btn} { display: inline-block; flex: none; }
-
-      /* currentColor, not a brand colour of ours — the tab inherits Whatnot's
-         own text colour so the active underline matches their tabs. */
-      #${TAB_ID}[data-wch-active] {
-        font-weight: 600;
-        box-shadow: inset 0 -2px 0 currentColor;
-      }
-      #${TAB_ID} .wch-count {
-        margin-left: 5px;
-        font-size: 0.85em;
-        opacity: 0.55;
-      }
+      #${QCARD_ID} .wch-qdone:hover { color: #2f9e44; border-color: #2f9e44; background: rgba(47, 158, 68, 0.1); }
+      #${QCARD_ID} li[data-resolved] .wch-qdone { color: #2f9e44; border-color: #2f9e44; }
+      #${QCARD_ID} .wch-qempty { padding: 0 0 12px; color: var(--wch-dim); }
   `;
 
   // Overwrite, don't skip-if-present. An extension reload injects a fresh
@@ -304,64 +291,16 @@
     style.textContent = CSS;
   }
 
-  // ------------------------------------------------------------ questions tab
+  // ----------------------------------------------------------- questions card
 
-  function findTabBar() {
-    const tabs = Array.from(document.querySelectorAll('button')).filter((b) =>
-      NATIVE_TABS.includes(textOf(b))
-    );
-    return tabs.length >= 2 ? tabs[0].parentElement : null;
-  }
-
-  // The chat column's background, found by walking up past transparent
-  // wrappers, so the panel matches Whatnot's light or dark theme.
-  function chatColors() {
-    let bg = '';
-    for (let el = region; el && el !== document.documentElement; el = el.parentElement) {
-      const c = getComputedStyle(el).backgroundColor;
-      if (c && c !== 'transparent' && !/rgba\(.*,\s*0\)$/.test(c)) {
-        bg = c;
-        break;
-      }
-    }
-    return { bg: bg || getComputedStyle(document.body).backgroundColor || '#fff',
-             fg: region ? getComputedStyle(region).color : '' };
-  }
-
-  // The scrolling viewport the rows live in — just the messages, not the tab
-  // bar or composer. Covering the whole region put the panel over the
-  // Chat/Watching/Activity tabs, and it swallowed the click meant to close it.
-  function messageViewport() {
-    for (let el = rowList; el && el !== region?.parentElement; el = el.parentElement) {
-      const oy = getComputedStyle(el).overflowY;
-      if (oy === 'auto' || oy === 'scroll') return el;
-    }
-    return region;
-  }
-
-  function placePanel(panel) {
-    const vp = region && document.contains(region) ? messageViewport() : null;
-    const r = vp && vp.getBoundingClientRect();
-    if (!r || r.width < 40 || r.height < 60) {
-      panel.style.display = 'none';
-      return;
-    }
-
-    // Belt and braces: never start above the bottom of the tab bar.
-    let top = r.top;
-    const bar = findTabBar();
-    if (bar) {
-      const b = bar.getBoundingClientRect();
-      const overlapsX = b.left < r.right && b.right > r.left;
-      if (overlapsX && b.bottom > top && b.top < r.bottom) top = b.bottom;
-    }
-
-    panel.style.display = '';
-    panel.style.top = top + 'px';
-    panel.style.left = r.left + 'px';
-    panel.style.width = r.width + 'px';
-    panel.style.height = Math.max(0, r.bottom - top) + 'px';
-  }
+  // Questions live in a card above Whatnot's chat card in the right column
+  // (`[grid-area:sidebar]`, a flex column with a 16px gap). React reconciles
+  // its own children there and leaves ours alone. Narrow layouts have no such
+  // column, so there the card simply isn't shown.
+  const SIDEBAR = 'div[class*="grid-area:sidebar"]';
+  let qcard = null;
+  let qcardEls = null;
+  let qcardCollapsed = false;
 
   function toggleResolved(key) {
     if (resolved.has(key)) resolved.delete(key);
@@ -374,198 +313,155 @@
   const listedQuestions = () =>
     [...questions].filter(([key, q]) => shouldHighlight(key, q.text));
 
-  function buildPanel() {
-    const panel = document.createElement('div');
-    panel.id = PANEL_ID;
-    // A click on the dimmed margin (the panel, not the card) closes it.
-    panel.addEventListener('click', (e) => {
-      if (e.target === panel) setQuestionsOnly(false);
-    });
-
-    const card = document.createElement('div');
-    card.className = 'wch-card';
-    const { bg, fg } = chatColors();
-    card.style.background = bg;
-    if (fg) card.style.color = fg;
+  function buildQuestionsCard() {
+    qcard = document.createElement('div');
+    qcard.id = QCARD_ID;
+    if (qcardCollapsed) qcard.setAttribute('data-collapsed', '');
 
     const head = document.createElement('div');
-    head.className = 'wch-head';
-    const title = document.createElement('span');
-    title.className = 'wch-title';
-    title.textContent = 'Questions';
-    const open = document.createElement('span');
-    open.className = 'wch-open';
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'wch-close';
-    close.setAttribute('aria-label', 'Close questions');
-    close.textContent = '✕';
-    close.addEventListener('click', () => setQuestionsOnly(false));
-    head.append(title, open, close);
+    head.className = 'wch-qhead';
+    // The Showrunner mark (clapperboard), same paths as capture.js and the icons.
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const mark = document.createElementNS(svgNS, 'svg');
+    mark.setAttribute('viewBox', '0 0 24 24');
+    mark.setAttribute('fill', 'none');
+    mark.setAttribute('stroke', 'currentColor');
+    mark.setAttribute('stroke-width', '2');
+    mark.setAttribute('stroke-linecap', 'round');
+    mark.setAttribute('stroke-linejoin', 'round');
+    mark.setAttribute('width', '18');
+    mark.setAttribute('height', '18');
+    mark.classList.add('wch-mark');
+    for (const d of [
+      'M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z',
+      'm6.2 5.3 3.1 3.9',
+      'm12.4 3.4 3.1 4',
+      'M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z',
+    ]) {
+      const p = document.createElementNS(svgNS, 'path');
+      p.setAttribute('d', d);
+      mark.append(p);
+    }
+    const name = document.createElement('span');
+    name.className = 'wch-qname';
+    name.textContent = 'Questions';
+    const count = document.createElement('span');
+    count.className = 'wch-qcount';
+    count.textContent = '0';
+    head.append(mark, name, count);
+    head.addEventListener('click', () => {
+      qcardCollapsed = !qcardCollapsed;
+      qcard.toggleAttribute('data-collapsed', qcardCollapsed);
+    });
 
-    const list = document.createElement('div');
-    list.className = 'wch-list';
-
-    card.append(head, list);
-    panel.append(card);
-    document.body.append(panel);
-    return panel;
+    const list = document.createElement('ul');
+    list.className = 'wch-qlist';
+    qcard.append(head, list);
+    qcardEls = { count, list };
+    panelDirty = true;
   }
 
-  function renderPanel() {
-    let panel = document.getElementById(PANEL_ID);
-    if (!(questionsOnly && settings.questionsTab)) {
-      if (panel) panel.remove();
-      return;
+  function ensureQuestionsCard() {
+    if (!settings.questionsTab) {
+      removeQuestionsCard();
+      return false;
     }
-
-    const fresh = !panel;
-    if (fresh) {
-      panel = buildPanel();
+    const col = document.querySelector(SIDEBAR);
+    if (!col) {
+      if (qcard) qcard.remove();
+      return false;
+    }
+    if (!qcard) buildQuestionsCard();
+    if (qcard.parentElement !== col || col.firstElementChild !== qcard) {
+      col.prepend(qcard);
       panelDirty = true;
     }
-    placePanel(panel);
+    return true;
+  }
+
+  // Newest question on top; resolved ones stay, struck through, so a mod can
+  // reopen one. Rebuilt only when something changed (panelDirty).
+  function renderQuestionsCard() {
+    if (!ensureQuestionsCard()) return;
+    const items = listedQuestions();
+    const openCount = items.filter(([key]) => !resolved.has(key)).length;
+    const want = String(openCount);
+    if (qcardEls.count.textContent !== want) qcardEls.count.textContent = want;
+    qcardEls.count.toggleAttribute('data-open', openCount > 0);
     if (!panelDirty) return;
     panelDirty = false;
 
-    const list = panel.querySelector('.wch-list');
-    const atBottom = fresh || list.scrollHeight - list.scrollTop - list.clientHeight < 40;
-    const items = listedQuestions();
-    const openCount = items.filter(([key]) => !resolved.has(key)).length;
-    panel.querySelector('.wch-open').textContent = `· ${openCount} open`;
+    const list = qcardEls.list;
     list.replaceChildren();
-
     if (!items.length) {
-      const empty = document.createElement('div');
-      empty.className = 'wch-empty';
+      const empty = document.createElement('li');
+      empty.className = 'wch-qempty';
       empty.textContent = 'No questions yet';
       list.append(empty);
+      return;
     }
-
-    for (const [key, q] of items) {
+    for (const [key, q] of items.slice().reverse()) {
       const isResolved = resolved.has(key);
-      const item = document.createElement('div');
-      item.className = 'wch-item';
+      const item = document.createElement('li');
       if (isResolved) item.setAttribute('data-resolved', '');
 
       const body = document.createElement('div');
-      body.className = 'wch-body';
-      if (q.user) {
-        const user = document.createElement('span');
-        user.className = 'wch-user';
-        user.textContent = q.user;
-        body.append(user);
-      }
-      body.append(q.text);
+      body.className = 'wch-qbody';
+      const meta = document.createElement('span');
+      meta.className = 'wch-quser';
+      if (q.user) meta.append(q.user, ' · ');
+      const age = document.createElement('span');
+      age.className = 'wch-qage';
+      age.dataset.ts = String(q.ts || Date.now());
+      age.textContent = ageOf(q.ts);
+      meta.append(age);
+      body.append(meta);
+      const text = document.createElement('span');
+      text.className = 'wch-qtext';
+      text.textContent = q.text;
+      body.append(text);
       item.append(body);
 
       if (settings.allowResolve) {
         const btn = document.createElement('button');
-        btn.className = CLS.btn;
+        btn.className = 'wch-qdone';
         btn.type = 'button';
-        btn.textContent = isResolved ? 'Reopen' : 'Mark as resolved';
-        btn.addEventListener('click', () => toggleResolved(key));
+        btn.textContent = '✓';
+        btn.title = isResolved ? 'Reopen' : 'Mark as resolved';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleResolved(key);
+        });
         item.append(btn);
       }
       list.append(item);
     }
-
-    if (atBottom) list.scrollTop = list.scrollHeight;
   }
 
-  function setQuestionsOnly(on) {
-    questionsOnly = on;
-    panelDirty = true;
-    renderPanel();
-    syncTab(document.getElementById(TAB_ID));
+  function removeQuestionsCard() {
+    if (qcard) qcard.remove();
+    qcard = null;
+    qcardEls = null;
   }
 
-  // The panel is position:fixed, so it has to follow the chat when the window
-  // resizes or the page scrolls.
-  const reposition = () => {
-    const panel = document.getElementById(PANEL_ID);
-    if (panel) placePanel(panel);
-  };
-  window.addEventListener('resize', reposition);
-  window.addEventListener('scroll', reposition, true);
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && questionsOnly) setQuestionsOnly(false);
-  });
-
-  function syncTab(tab) {
-    if (!tab) return;
-    if (questionsOnly) tab.setAttribute('data-wch-active', '1');
-    else tab.removeAttribute('data-wch-active');
-
-    const count = listedQuestions().filter(([key]) => !resolved.has(key)).length;
-    const badge = tab.querySelector('.wch-count');
-    const want = count ? String(count) : '';
-    if (badge && badge.textContent !== want) badge.textContent = want;
+  // "just now", "45s", "3m", "1h 12m" — how long since the question was first seen.
+  function ageOf(ts) {
+    const s = Math.max(0, Math.round((Date.now() - (ts || Date.now())) / 1000));
+    if (s < 10) return 'just now';
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m`;
+    return `${Math.floor(m / 60)}h ${m % 60}m`;
   }
 
-  function removeTab() {
-    const tab = document.getElementById(TAB_ID);
-    if (tab) tab.remove();
-    questionsOnly = false;
-    const panel = document.getElementById(PANEL_ID);
-    if (panel) panel.remove();
-  }
-
-  // The tab is rebuilt if React drops it. Its className is copied from a real
-  // tab button rather than styled by hand — that's what makes it match, and it
-  // keeps matching when Whatnot restyles their own tabs.
-  function ensureTab() {
-    if (!settings.questionsTab) {
-      removeTab();
-      return;
+  // Ages tick without rebuilding the list: only the age spans are touched.
+  intervals.push(setInterval(() => {
+    if (!qcard) return;
+    for (const el of qcard.querySelectorAll('.wch-qage')) {
+      const want = ageOf(Number(el.dataset.ts));
+      if (el.textContent !== want) el.textContent = want;
     }
-
-    const bar = findTabBar();
-    if (!bar) return;
-
-    let tab = document.getElementById(TAB_ID);
-    if (tab && tab.parentElement === bar) {
-      syncTab(tab);
-      return;
-    }
-    if (tab) tab.remove();
-
-    const model = Array.from(bar.children).find((c) => c.tagName === 'BUTTON');
-
-    tab = document.createElement('button');
-    tab.id = TAB_ID;
-    tab.type = 'button';
-    if (model) tab.className = model.className;
-    tab.textContent = 'Questions';
-
-    const badge = document.createElement('span');
-    badge.className = 'wch-count';
-    tab.append(badge);
-
-    tab.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setQuestionsOnly(!questionsOnly);
-    });
-
-    bar.append(tab);
-
-    // Clicking a real tab drops our filter, so the panel can't be left showing
-    // a filtered list under someone else's tab.
-    if (!bar.dataset.wchBound) {
-      bar.dataset.wchBound = '1';
-      bar.addEventListener(
-        'click',
-        (e) => {
-          if (e.target.closest(`#${TAB_ID}`)) return;
-          if (questionsOnly) setQuestionsOnly(false);
-        },
-        true
-      );
-    }
-
-    syncTab(tab);
-  }
+  }, 15000));
 
   // -------------------------------------------------------------- decoration
 
@@ -742,7 +638,7 @@
     offCandidate.delete(row);
 
     if (!questions.has(key)) {
-      questions.set(key, { user, text });
+      questions.set(key, { user, text, ts: Date.now() });
       panelDirty = true;
     }
 
@@ -806,8 +702,7 @@
     if (observer) observer.disconnect();
     try {
       for (const row of Array.from(rowList.children)) decorate(row);
-      ensureTab();
-      renderPanel();
+      renderQuestionsCard();
     } finally {
       if (observer && region) {
         observer.observe(region, { childList: true, subtree: true, characterData: true });
@@ -839,7 +734,7 @@
   function removeAllDecorations() {
     for (const el of document.querySelectorAll(`[${ATTR}]`)) el.removeAttribute(ATTR);
     for (const el of document.querySelectorAll(`.${CLS.tag}`)) el.remove();
-    removeTab();
+    removeQuestionsCard();
     const style = document.getElementById('wch-style');
     if (style) style.remove();
     marked = new WeakSet();

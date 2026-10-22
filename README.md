@@ -1,27 +1,78 @@
-# Whatnot Chat Helper
+# Showrunner
 
-A Manifest V3 Chrome extension for sellers and mods running a Whatnot live show.
-It highlights viewer questions **in Whatnot's own chat** so they don't scroll past
-mid-show, and lets you tick each one off as you answer it.
+Seller tools for Whatnot live shows, as a Chrome extension. By DIECASTr.
+(Was "Whatnot Chat Helper" up to v0.13.)
 
-No side panel, no second list to watch — the chat you're already looking at just
-gets colour.
+- **Questions**: viewer questions highlighted in Whatnot's own chat and listed in
+  a card above it, newest first with how long each has waited; tick them off.
+- **Auction**: a card above the shop list that follows the current item (running,
+  sold, awaiting next) with a history of every sale in the show.
+- **Labels**: prints a DYMO LabelWriter label on every sale (title, date/time,
+  seller · buyer · price), with one-click reprints.
+
+**Get it:** download the latest zip from
+[Releases](https://github.com/chris-merrill/showrunner/releases/latest) and follow
+[SETUP.md](SETUP.md). Everything below is for developers.
 
 ## Install (unpacked)
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode** (top right)
 3. **Load unpacked** → select this folder (the one with `manifest.json`)
-4. Open a live show; click the toolbar icon for the menu
+4. Open a live show; click the toolbar icon for the settings page
 
-## The menu
+## The settings page
 
-Click the extension icon:
+Clicking the extension icon opens a full tab (`options/`), handy next to the
+show in a second window:
 
 - **Highlight questions** — colours any chat line ending in `?`
 - **Allow resolve** — adds a ✕ on row hover; click it to tick a question off
   (turns green and dims). Click again to un-tick.
-- **Reset ticks** — clears all ticks for the current tab
+- **Questions card** — a card above Whatnot's chat card (in the
+  `[grid-area:sidebar]` column) listing questions newest first with a ✓ to
+  resolve; replaced the injected Questions tab + overlay panel in v0.14
+  (Chris: "I don't like the tab"). Hidden on narrow layouts that have no
+  sidebar column.
+- **Smart detection** — DIECASTr classifier for asks with no `?`; needs a key
+  minted at diecastr.app/question-api
+- **Auction capture** — see below
+- **Label printer → Detect printers** — probes Chrome's printer API (ChromeOS
+  only, so it reports "not available" on Mac/Windows) and the DYMO web service
+  on 127.0.0.1/localhost:41951-41953, listing any LabelWriters it knows. Links
+  to the DYMO Connect installers (Windows / Mac) are on the page; the direct
+  links are version-pinned (1.6.3, Oct 2026) and dymo.com/user-guide.html has
+  the latest.
+  - Mac gotcha (Chris's machine, DYMO Label 8.7): the service's "DYMO Root CA
+    (for localhost)" is in the System keychain but **not trusted**, so Chrome
+    refuses the HTTPS connection ("Failed to fetch"). Fix by trusting it:
+    `sudo security add-trusted-cert -d -r trustRoot -p ssl -k /Library/Keychains/System.keychain dymo-root-ca.pem`.
+    The service also isn't kept alive (launch agent not loaded); start it with
+    `open /Library/Frameworks/DYMO/SDK/DYMO.DLS.Printing.Host.app`. DYMO
+    Connect on Windows installs a trusted cert and an auto-start service.
+  - **Neither DYMO service prints on Chris's Mac (macOS 26, 2026-10-21).** DYMO
+    Label 8.7's service lists the USB LW450 and answers `true` to PrintLabel but
+    no job ever reaches CUPS (a plain `lp` to the same queue prints fine). DYMO
+    Connect 1.6.3.9's service (`DYMO.WebApi.Mac.Host`) installs its certs OK
+    (System keychain identity "localhost") but never opens a port: its bundle
+    is missing `System.Drawing.Common.dll`, which `DYMO.LabelAPI` needs, so
+    startup dies silently after "Logger instantiated" in
+    `~/Library/Application Support/DYMO/DYMOConnect/DymoWebApi.log`. Its
+    first-run flag was set to false by hand (backup `DYMOWebApi.Json.bak-firstrun`).
+    Conclusion: the Mac is not a usable DYMO-service test bed; test on Windows
+    (Pablo's PC, or a Windows 11 ARM VM in UTM with the printer passed through).
+    DYMO Label 8.7 was removed on 2026-10-21 (`~/Desktop/remove-dymo-label-8.sh`);
+    DYMO Connect 1.6.3 stays installed but its service is useless here. Its
+    installer also deletes the USB print queue each time it runs; re-create it with
+    `lpadmin -p DYMO_LabelWriter_450_USB -v "usb://DYMO/LabelWriter%20450?serial=…" -m Library/Printers/PPDs/Contents/Resources/lw450.ppd.gz -E`.
+  - **Mac development stand-in:** `dev/dymo-standin.py` answers the same three
+    calls on plain `http://127.0.0.1:41951`, lists the Mac's DYMO CUPS queues,
+    renders the label XML's text runs at 300 dpi and prints with `lp`. Run
+    `dev/.venv/bin/python dev/dymo-standin.py` (venv has Pillow). The extension
+    probes the HTTPS addresses first and this HTTP one last, so on Pablo's PC the
+    real service wins. It proves the flow and the label layout, not that DYMO's
+    real service accepts the XML.
+- **Reset ticks** — clears all ticks for the open show
 
 Settings save instantly and apply without reloading anything.
 
@@ -30,8 +81,9 @@ Settings save instantly and apply without reloading anything.
 | File | Role |
 |---|---|
 | `content.js` | Finds the chat, decorates rows, owns the ✕ |
-| `background.js` | Keeps the content script injected |
-| `popup/` | The two-switch menu |
+| `capture.js` | Read-only auction-close recon (v0.14) |
+| `background.js` | Keeps the content scripts injected; stores capture events; opens the settings page |
+| `options/` | The full-page settings tab |
 
 ### Finding the chat
 
@@ -74,6 +126,68 @@ Two paths, because declarative injection only covers page loads that happen
 
 The background pings before injecting, so a tab never ends up with two copies.
 `content.js` also guards on `window.__whatnotChatHelperLoaded`.
+
+## Auction-close capture (v0.14)
+
+Goal: print a DYMO label the moment an auction closes (item title, date, seller),
+replacing Pablo's Sharpie post-it. `capture.js` is the detector plus an
+**Auction status** card. It's read-only and sends nothing to Whatnot.
+
+### How a close is detected
+
+Verified on a live show, 2026-10-21. The current-item panel is the player footer,
+`footer[class*="livePlayerFooter"]`, and its fields are labelled elements:
+
+| Field | Element | Running | Closed |
+|---|---|---|---|
+| title | `strong.text-body1` | Mainline madness #153 | same |
+| subtitle | `strong.text-body2` | Hot Wheels ∙ 1:64 | same |
+| bids | text node | 4 Bids | 5 Bids |
+| price | right `strong.text-neutral-50` | $5 | $6 |
+| status | right `strong.text-red-500` | `00:09` countdown | **`Sold`** |
+| winner | header `strong.text-caption1` + nested `strong.text-yellow-500` | `user is Winning!` | `user won!` |
+
+A close is: status flips from a countdown to `Sold` (or the yellow word becomes
+`won!`). One `close` event fires per item (keyed on title + price + winner) and
+the key resets when the next countdown starts. Then the footer button reads
+"Awaiting next item" and the next item appears ~20s later.
+
+**Unsold** (seen 2026-10-21, thecarcollector): the countdown reaches `00:00` with
+0 bids and the footer simply reverts to the base listing ("Diecast | Shown live |
+90 Available | 0 Bids | $1") with an empty status. No "unsold" wording appears.
+That is reported as an `end` event, never a `close`. Sellers also re-run the same
+numbered item (e.g. "Diecast #11" at $950, then again at $400), so a repeated
+title is not by itself a duplicate.
+
+**Header toggle:** a round price-tag button is added to Whatnot's top-right icon
+row (left of the avatar). Yellow = detector on. It flips `captureEnabled`, the
+same switch as the settings page.
+
+### The card
+
+With **Capture auction closes** on, a card is inserted above Whatnot's "Shop"
+card in the left column (`div[class*="grid-area:shop"]`), styled like theirs
+(falls back to a floating card if that column isn't on the page): state pill
+(Pre-bid / Running 00:07 / Sold / Awaiting next item), the item's title,
+subtitle · bids · price, the current leader or winner, the last label's print
+status, an **Auto-print** switch (same setting as the settings page), and a
+history of closes for this show with a **reprint** icon and a **×** per row and
+**Clear all**. History and removals are backed by the stored event log, so they
+survive reloads. Click the header to collapse the card.
+
+Reload safety: a sold item already on screen when the script starts is logged as
+`seen`, not reported or printed, and the 5-minute duplicate guard is re-seeded
+from storage — otherwise every tab/extension reload during "Awaiting next item"
+re-reported (and re-printed) the last sale. An orphaned copy of the script (after
+an extension reload) detects that its `chrome.runtime.id` is gone and stands down.
+
+### Events
+
+`close {title, subtitle, bids, price, winner}`, `end`, `panel` (footer text on
+change), `dom` (close-word text, recon), `mark` (the settings page button). They
+live in `chrome.storage.local.capture` (ring buffer, 5000) and show on the settings
+page's table; the badge counts closes. Reload the tab after enabling the first
+time so `capture.js` is injected alongside `content.js`.
 
 ## Known limits
 

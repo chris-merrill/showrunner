@@ -1,23 +1,41 @@
 {
   "manifest_version": 3,
-  "name": "Whatnot Chat Helper",
-  "version": "0.12.0",
-  "description": "Highlights viewer questions in Whatnot live chat and lets you tick them off as you answer.",
+  "name": "Showrunner",
+  "version": "1.0.0",
+  "description": "Seller tools for Whatnot live shows: question tracking, live auction status and DYMO label printing on every sale. By DIECASTr.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "permissions": [
     "storage",
+    "unlimitedStorage",
     "scripting",
     "tabs"
   ],
   "host_permissions": [
     "https://www.whatnot.com/*",
-    "https://whatnot.com/*"
+    "https://whatnot.com/*",
+    "https://127.0.0.1/*",
+    "https://localhost/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Whatnot Chat Helper",
-    "default_popup": "popup/popup.html"
+    "default_title": "Showrunner",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
   },
   "content_scripts": [
     {
@@ -26,7 +44,8 @@
         "https://whatnot.com/*"
       ],
       "js": [
-        "content.js"
+        "content.js",
+        "capture.js"
       ],
       "run_at": "document_idle"
     }

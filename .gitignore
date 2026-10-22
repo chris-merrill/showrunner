@@ -1,0 +1,3 @@
+dev/.venv/
+dist/
+.DS_Store

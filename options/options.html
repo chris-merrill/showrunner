@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Showrunner</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header class="head">
+      <div class="brand">
+        <img src="../icons/icon-48.png" width="40" height="40" alt="" />
+        <div>
+          <h1>Showrunner <span class="by">by DIECASTr</span></h1>
+          <p class="sub">Seller tools for Whatnot live shows. Changes save instantly.</p>
+        </div>
+      </div>
+      <div class="statusbox">
+        <span id="dot" class="dot" data-state="idle"></span>
+        <span id="status">Checking…</span>
+        <button id="reconnect" class="link">Reconnect</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Chat</h2>
+        <label class="toggle">
+          <input type="checkbox" id="highlightQuestions" />
+          <span class="track"><span class="knob"></span></span>
+          <span class="label">Highlight questions <em>Colours any chat line ending in “?”</em></span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="allowResolve" />
+          <span class="track"><span class="knob"></span></span>
+          <span class="label">Allow resolve <em>Adds a ✕ on hover to tick one off</em></span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="questionsTab" />
+          <span class="track"><span class="knob"></span></span>
+          <span class="label">Questions card <em>A card above the chat listing open questions, newest first</em></span>
+        </label>
+        <div class="actions">
+          <button id="reset" class="btn">Reset ticks on the open show</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Smart detection</h2>
+        <label class="toggle">
+          <input type="checkbox" id="aiEnabled" />
+          <span class="track"><span class="knob"></span></span>
+          <span class="label">Use DIECASTr <em>Catches asks with no “?” in them. Needs a key.</em></span>
+        </label>
+        <div id="aiConfig" class="fields" hidden>
+          <label class="field">
+            <span class="field-label">API key</span>
+            <input type="password" id="token" placeholder="DIECASTr key" spellcheck="false" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span class="field-label">Endpoint <em>(leave as-is)</em></span>
+            <input type="url" id="endpoint" spellcheck="false" />
+          </label>
+          <div class="actions">
+            <button id="saveAi" class="btn">Save</button>
+            <span class="note" id="aiNote">Without a key, questions are detected locally by the “?” rule.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Auction capture</h2>
+        <label class="toggle">
+          <input type="checkbox" id="captureEnabled" />
+          <span class="track"><span class="knob"></span></span>
+          <span class="label">Capture auction closes <em>Shows the “Auction status” card on the show and logs each close. Read-only.</em></span>
+        </label>
+
+        <div id="captureConfig" hidden>
+          <h3>Recent closes</h3>
+          <ul id="closesList" class="closes"></ul>
+
+          <details id="captureLog">
+            <summary>Event log <span class="dim">(for debugging: every panel change, timer tick and close)</span></summary>
+            <div class="toolbar">
+              <button id="captureMark" class="btn btn-mark">Mark: an auction just closed</button>
+              <input id="captureFilter" type="search" placeholder="filter (regex)" spellcheck="false" />
+              <label class="check"><input type="checkbox" id="captureHitsOnly" /> closes only</label>
+              <span class="spacer"></span>
+              <button id="captureExport" class="btn">Export JSON</button>
+              <button id="captureClear" class="btn">Clear</button>
+            </div>
+            <p class="note" id="captureNote">No events yet.</p>
+            <table id="captureTable">
+              <thead><tr><th>Time</th><th>Kind</th><th>What changed</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </details>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Label printer</h2>
+        <p class="note">Chrome only lets extensions list printers on ChromeOS. On Mac and Windows the way in is
+          DYMO Connect's local web service, which lists LabelWriters and prints silently. This checks both.</p>
+        <p class="note">Need DYMO Connect? Free from DYMO:
+          <a href="https://dymoreleasecontent.blob.core.windows.net/dymo-release/DCDWIN/DCDSetup1.6.3.11-X64.exe" target="_blank" rel="noopener">Windows (1.6.3)</a> ·
+          <a href="https://dymoreleasecontent.blob.core.windows.net/dymo-release/DCDMAC/DCDMac1.6.3.9-Arm64.pkg" target="_blank" rel="noopener">Mac, Apple silicon (1.6.3)</a> ·
+          <a href="https://www.dymo.com/user-guide.html" target="_blank" rel="noopener">all versions on dymo.com</a>.
+          Install it, plug the LabelWriter in by USB, then click Detect.</p>
+        <div class="actions">
+          <button id="printerDetect" class="btn">Detect printers</button>
+          <span class="note" id="printerNote"></span>
+        </div>
+        <ul id="printerList" class="plain"></ul>
+
+        <div class="fields">
+          <label class="field">
+            <span class="field-label">Printer</span>
+            <select id="printerName"><option value="">— detect first —</option></select>
+          </label>
+          <label class="field">
+            <span class="field-label">Label</span>
+            <select id="labelKind">
+              <option value="30252">30252 Address (3½ × 1⅛ in)</option>
+              <option value="30336">30336 Multipurpose (2⅛ × 1 in)</option>
+              <option value="30334">30334 Multipurpose (2¼ × 1¼ in)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">Seller line <em>(optional, printed under the date)</em></span>
+            <input type="text" id="sellerName" placeholder="Pablo's Diecast Garage" spellcheck="false" />
+          </label>
+          <div class="actions">
+            <button id="printerSave" class="btn">Save</button>
+            <button id="printerTest" class="btn">Print test label</button>
+            <span class="note" id="printerTestNote"></span>
+          </div>
+        </div>
+
+        <label class="toggle">
+          <input type="checkbox" id="printOnClose" />
+          <span class="track"><span class="knob"></span></span>
+          <span class="label">Print a label when an auction closes <em>Title, date and time, seller · winner · price</em></span>
+        </label>
+      </section>
+    </main>
+
+    <script src="options.js"></script>
+  </body>
+</html>
