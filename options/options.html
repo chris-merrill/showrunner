@@ -106,6 +106,9 @@
           <a href="https://dymoreleasecontent.blob.core.windows.net/dymo-release/DCDMAC/DCDMac1.6.3.9-Arm64.pkg" target="_blank" rel="noopener">Mac, Apple silicon (1.6.3)</a> ·
           <a href="https://www.dymo.com/user-guide.html" target="_blank" rel="noopener">all versions on dymo.com</a>.
           Install it, plug the LabelWriter in by USB, then click Detect.</p>
+        <p class="note"><strong>On a Mac</strong> DYMO's service doesn't run reliably, so use the
+          <a href="https://github.com/chris-merrill/showrunner/releases/latest" target="_blank" rel="noopener">Showrunner Print Bridge</a>
+          instead (the <code>mac-print-bridge</code> zip on the releases page): unzip it, run <code>start.sh</code>, keep its window open, then click Detect.</p>
         <div class="actions">
           <button id="printerDetect" class="btn">Detect printers</button>
           <span class="note" id="printerNote"></span>
@@ -143,6 +146,14 @@
         </label>
       </section>
     </main>
+
+    <footer class="foot">
+      <span id="version">Showrunner</span>
+      <a href="https://github.com/chris-merrill/showrunner" target="_blank" rel="noopener">Source on GitHub</a>
+      <a href="https://github.com/chris-merrill/showrunner/releases/latest" target="_blank" rel="noopener">Latest release</a>
+      <a href="https://github.com/chris-merrill/showrunner/blob/main/SETUP.md" target="_blank" rel="noopener">Setup guide</a>
+      <span>Only reads the Whatnot pages you have open. Never bids, posts or clicks for you.</span>
+    </footer>
 
     <script src="options.js"></script>
   </body>

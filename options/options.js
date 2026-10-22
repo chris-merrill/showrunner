@@ -354,3 +354,4 @@ chrome.storage.onChanged.addListener((changes, area) => {
 load();
 refreshStatus();
 renderCapture();
+$('version').textContent = `Showrunner ${chrome.runtime.getManifest().version}`;
