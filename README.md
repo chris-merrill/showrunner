@@ -1,6 +1,6 @@
 # Showrunner
 
-Seller tools for Whatnot live shows, as a Chrome extension. By DIECASTr.
+Seller tools for Whatnot live shows, as a Chrome extension.
 (Was "Whatnot Chat Helper" up to v0.13.)
 
 - **Questions**: viewer questions highlighted in Whatnot's own chat and listed in
