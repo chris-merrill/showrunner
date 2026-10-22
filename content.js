@@ -102,6 +102,7 @@
   const offCandidate = new WeakMap();
   const diag = { marks: 0, remarks: 0 };
   const bumpDiag = (kind) => {
+    if (!DEBUG) return; // a DOM write per marked row; development only
     diag[kind]++;
     try {
       document.documentElement.dataset[kind === 'marks' ? 'wchMarks' : 'wchRemarks'] =

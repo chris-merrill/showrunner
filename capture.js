@@ -34,42 +34,28 @@
   const STYLE_ID = 'wn-card-style';
   const HISTORY_MAX = 50;
   const HISTORY_SHOWN = 12;
-  const CLOSE_WORDS = /\b(sold|won|winner|congrats?|congratulations|ended|ending|no bids|unsold|passed|going once|going twice|last call)\b/i;
   const BIDS_RE = /^\s*\d+\s+bids?\s*$/i;
   const TIMER_RE = /^\s*\d{1,2}:\d{2}\s*$/;
   const TICK_MS = 250;
 
   let enabled = false;
-  let lastPanel = '';
   let lastStatus = '';
   let closedKey = '';           // title|price|winner of the close already reported
   let history = [];             // closes, newest last: {ts, title, price, winner, bids}
   let collapsed = false;
-  const recentDom = new Map();    // text -> ts, de-dup window
   const recentCloses = new Map(); // title|price|winner -> ts of the close we reported
   const DUP_WINDOW_MS = 5 * 60 * 1000;
   const timers = [];              // every setInterval, so an orphaned copy can stop itself
   let startup = true;             // true until the first footer read after enabling
 
+  const DEBUG = false; // true: echo every event to the page console
+
   function send(kind, data, extra) {
     const ev = { ts: Date.now(), kind, data: String(data ?? '').slice(0, 2000), page: location.href, ...extra };
-    console.log(LOG, kind, ev.data);
+    if (DEBUG) console.log(LOG, kind, ev.data);
     try {
       chrome.runtime.sendMessage({ type: 'capture-event', event: ev }, () => void chrome.runtime.lastError);
     } catch (_) { /* extension context gone; stand down on next tick */ }
-  }
-
-  function cssPath(el) {
-    const parts = [];
-    for (let n = el, i = 0; n && n.nodeType === 1 && i < 5; n = n.parentElement, i++) {
-      let s = n.tagName.toLowerCase();
-      if (n.id) s += '#' + n.id;
-      else if (typeof n.className === 'string' && n.className.trim()) {
-        s += '.' + n.className.trim().split(/\s+/).slice(0, 2).join('.');
-      }
-      parts.unshift(s);
-    }
-    return parts.join(' > ');
   }
 
   const text = (el) => (el ? (el.textContent || '').trim() : '');
@@ -109,11 +95,6 @@
       const r = readFooter();
       renderCard(r);
       if (!r) return;
-
-      if (r.panel !== lastPanel) {
-        send('panel', r.panel, { prev: lastPanel.slice(0, 300) });
-        lastPanel = r.panel;
-      }
 
       const key = `${r.title}|${r.price}|${r.winner}`;
 
@@ -491,7 +472,7 @@
   });
 
   // Only touch the DOM when a value changed: every write is a mutation the
-  // page (and our observer) has to process, four times a second.
+  // page has to process, four times a second.
   const setText = (node, value) => { if (node.textContent !== value) node.textContent = value; };
   let lastWho = '';
 
@@ -686,40 +667,6 @@
     renderHistory();
   }
 
-  // ----------------------------------------------------------- recon
-
-  function checkText(t, node) {
-    if (!enabled || !t || !CLOSE_WORDS.test(t)) return;
-    if (card && node && card.contains(node)) return; // our own card
-    const key = t.trim().slice(0, 200);
-    const now = Date.now();
-    if (recentDom.has(key) && now - recentDom.get(key) < 3000) return;
-    recentDom.set(key, now);
-    if (recentDom.size > 200) recentDom.delete(recentDom.keys().next().value);
-    send('dom', key, { path: node ? cssPath(node) : '' });
-  }
-
-  // Our own card is inside document.body too. Mutations under it must be
-  // ignored, and tick() must not run from here on every batch, or
-  // tick → renderCard → mutation → tick loops forever and freezes the tab.
-  const observer = new MutationObserver((muts) => {
-    if (!enabled) return;
-    let footerChanged = false;
-    for (const m of muts) {
-      if (card && card.contains(m.target)) continue;
-      if (!footerChanged && m.target.closest && m.target.closest(FOOTER)) footerChanged = true;
-      if (m.type === 'characterData') {
-        checkText(m.target.nodeValue, m.target.parentElement);
-        continue;
-      }
-      for (const n of m.addedNodes) {
-        if (n.nodeType === 3) checkText(n.nodeValue, n.parentElement);
-        else if (n.nodeType === 1) checkText((n.innerText || n.textContent || '').slice(0, 500), n);
-      }
-    }
-    if (footerChanged) tick();
-  });
-
   // ------------------------------------------------------------ enable
 
   function setEnabled(on) {
@@ -727,15 +674,13 @@
     enabled = on;
     renderToggle();
     if (on) {
-      observer.observe(document.body, { subtree: true, childList: true, characterData: true });
       ensureCard();
       startup = true;
       checkPrinter(true);
       loadHistory().finally(() => { send('start', 'capture started'); tick(); });
     } else {
-      observer.disconnect();
       removeCard();
-      lastPanel = lastStatus = closedKey = '';
+      lastStatus = closedKey = '';
     }
   }
 
@@ -776,7 +721,7 @@
     if (orphaned()) return standDown();
     if (location.href === currentUrl) return;
     currentUrl = location.href;
-    closedKey = lastPanel = lastStatus = '';
+    closedKey = lastStatus = '';
     if (enabled) loadHistory();
   }, 1500));
 
@@ -788,7 +733,6 @@
   }
   function standDown() {
     for (const t of timers) clearInterval(t);
-    observer.disconnect();
     removeCard();
     if (toggle) toggle.remove();
     toggle = null;
@@ -799,8 +743,12 @@
     if (!document.body) return setTimeout(boot, 200);
     // Clear anything a previous copy left behind before we add our own.
     for (const stale of document.querySelectorAll(`#${TOGGLE_ID}, #${CARD_ID}`)) stale.remove();
-    timers.push(setInterval(() => { if (orphaned()) return standDown(); tick(); }, TICK_MS));
-    timers.push(setInterval(() => { if (orphaned()) return standDown(); ensureToggle(); positionToggle(); }, TICK_MS));
+    timers.push(setInterval(() => {
+      if (orphaned()) return standDown();
+      tick();
+      ensureToggle();
+      positionToggle();
+    }, TICK_MS));
     timers.push(setInterval(() => { if (enabled) checkPrinter(false); }, 60000));
     window.addEventListener('resize', positionToggle);
     ensureToggle();

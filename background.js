@@ -86,7 +86,7 @@ async function classify(text) {
 
 // capture.js fires in bursts (every panel/timer change), so events are queued
 // and written in one storage round-trip per ~300ms rather than one per event.
-const CAPTURE_MAX = 5000;
+const CAPTURE_MAX = 2000;
 let captureQueue = [];
 let captureFlush = null;
 

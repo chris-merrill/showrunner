@@ -202,7 +202,7 @@ an extension reload) detects that its `chrome.runtime.id` is gone and stands dow
 ### Events
 
 `close {title, subtitle, bids, price, winner}`, `end`, `panel` (footer text on
-change), `dom` (close-word text, recon), `mark` (the settings page button). They
+`start`, `mark` (the settings page button). They
 live in `chrome.storage.local.capture` (ring buffer, 5000) and show on the settings
 page's table; the badge counts closes. Reload the tab after enabling the first
 time so `capture.js` is injected alongside `content.js`.
