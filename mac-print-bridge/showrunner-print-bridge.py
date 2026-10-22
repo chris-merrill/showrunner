@@ -69,6 +69,10 @@ def printers_xml():
 
 def parse_label(label_xml):
     """-> (paper name, [(text, size_pt, bold)]) from a DieCutLabel's StyledText."""
+    # The stdlib parser expands entities; a label never needs a DOCTYPE, so
+    # refuse one rather than risk an entity-expansion blow-up.
+    if "<!DOCTYPE" in label_xml or "<!ENTITY" in label_xml:
+        raise ValueError("DOCTYPE/ENTITY not allowed in label XML")
     root = ET.fromstring(label_xml)
     paper = (root.findtext("PaperName") or DEFAULT_PAPER).strip()
     runs = []
@@ -76,6 +80,7 @@ def parse_label(label_xml):
         text = el.findtext("String") or ""
         font = el.find("Attributes/Font")
         size = float(font.get("Size", "10")) if font is not None else 10.0
+        size = min(72.0, max(4.0, size))
         bold = (font.get("Bold", "False") == "True") if font is not None else False
         runs.append((text, size, bold))
     return paper, runs
@@ -133,20 +138,34 @@ def print_label(printer_desc, label_xml):
     return queue, res.stdout.strip(), [t for t, _, _ in runs]
 
 
+MAX_BODY = 256 * 1024  # a label is a few KB; anything bigger isn't ours
+
+
 class Handler(BaseHTTPRequestHandler):
+    # Any web page on this Mac could otherwise POST here and print labels. A
+    # browser always sends Origin on a cross-origin POST, so only the extension's
+    # own origin is accepted; a request with no Origin (curl, a local script) is
+    # someone at this keyboard and is allowed.
+    def _origin_ok(self):
+        origin = self.headers.get("Origin")
+        return origin is None or origin.startswith("chrome-extension://")
+
     def _send(self, body, status=200, ctype="text/plain; charset=utf-8"):
         data = body.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin")
+        if origin and origin.startswith("chrome-extension://"):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
         self.wfile.write(data)
 
     def do_OPTIONS(self):
-        self._send("")
+        self._send("", 204 if self._origin_ok() else 403)
 
     def do_GET(self):
         if self.path.endswith("/StatusConnected"):
@@ -158,8 +177,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.path.endswith("/PrintLabel"):
             return self._send("not found", 404)
+        if not self._origin_ok():
+            print(f"[print] refused: origin {self.headers.get('Origin')!r}", file=sys.stderr, flush=True)
+            return self._send("false: not allowed from that origin", 403)
         length = int(self.headers.get("Content-Length", "0"))
-        form = parse_qs(self.rfile.read(length).decode("utf-8"))
+        if length > MAX_BODY:
+            return self._send("false: label too large", 413)
+        form = parse_qs(self.rfile.read(length).decode("utf-8", "replace"))
         printer = form.get("printerName", [""])[0]
         label_xml = form.get("labelXml", [""])[0]
         try:

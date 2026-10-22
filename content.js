@@ -31,6 +31,7 @@
     highlightQuestions: true,
     allowResolve: true,
     questionsTab: true,
+    captureEnabled: false, // the header toggle: Showrunner on/off; the cards follow it
     aiEnabled: false,
     endpoint: '',
     token: '',
@@ -362,7 +363,9 @@
   }
 
   function ensureQuestionsCard() {
-    if (!settings.questionsTab) {
+    // The header toggle (captureEnabled) is the master switch for both cards;
+    // in-chat highlighting is unaffected by it.
+    if (!settings.questionsTab || !settings.captureEnabled) {
       removeQuestionsCard();
       return false;
     }

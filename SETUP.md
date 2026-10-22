@@ -63,8 +63,10 @@ and needs a key (ask Chris).
 Open your show in Chrome like you normally do (the extension only works in
 Chrome, on `whatnot.com`).
 
-- **Top right, next to your avatar**: a price-tag button. Yellow means the label
-  printer is armed. Click it to turn it off and on without opening settings.
+- **Top right, next to your avatar**: the Showrunner button (a clapperboard).
+  Yellow means it's on: both cards are shown and labels print. Click it to turn
+  everything off and on without opening settings. Chat highlighting stays on
+  either way.
 - **Above your shop list**: the **Auction** card. It follows the current item
   and shows *Running*, *Sold* or *Awaiting next item*, who's winning, and
   "Label printed ✓" after each sale. Under **History**, every sale of the show

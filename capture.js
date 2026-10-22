@@ -665,7 +665,7 @@
   function renderToggle() {
     if (!toggle) return;
     toggle.toggleAttribute('data-on', enabled);
-    toggle.title = enabled ? 'Showrunner is watching auctions (click to turn off)' : 'Showrunner is off (click to turn on)';
+    toggle.title = enabled ? 'Showrunner is on: Auction and Questions cards, labels (click to turn off)' : 'Showrunner is off (click to turn on)';
   }
 
   // Seed the history from closes already stored for this show, so a tab reload
