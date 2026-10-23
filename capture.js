@@ -301,7 +301,8 @@
     #${CARD_ID} .wn-status .wn-state { white-space: nowrap; }
     #${CARD_ID} .wn-status .wn-state[data-state="none"], #${CARD_ID} .wn-status .wn-state[data-state="idle"] { background: transparent; padding-left: 0; color: var(--wn-dim); font-weight: 500; }
     #${CARD_ID} .wn-status .wn-print { flex: 1; min-width: 0; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #${CARD_ID} .wn-status .wn-again { width: auto; margin: 0 0 0 auto; padding: 4px 12px; font-size: 12px; font-weight: 700; flex: none; background: #ffe500; border-color: #ffe500; color: #111; }
+    /* Same size as the status chip beside it (owner, 2026-10-23). */
+    #${CARD_ID} .wn-status .wn-again { width: auto; margin: 0 0 0 auto; padding: 3px 10px; border: 0; border-radius: 999px; font: 600 12px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; flex: none; background: #ffe500; color: #111; }
     #${CARD_ID} .wn-status .wn-again:hover { background: #ffe500; filter: brightness(0.95); }
     .wn-dialog { width: 360px; max-width: calc(100vw - 32px); max-height: 80vh; overflow: auto; padding: 16px 18px; border: 0; border-top: 3px solid #ffe500; border-radius: 14px; background: #171717; color: #fff; font: 400 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; --wn-fg: #fff; --wn-dim: #a3a3a3; --wn-line: rgba(255,255,255,0.1); }
     .wn-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
