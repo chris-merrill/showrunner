@@ -264,6 +264,9 @@
     #${CARD_ID} .wn-status .wn-again { width: auto; margin: 0 0 0 auto; padding: 4px 10px; font-size: 12px; flex: none; }
     .wn-dialog { width: 360px; max-width: calc(100vw - 32px); max-height: 80vh; overflow: auto; padding: 16px 18px; border: 0; border-top: 3px solid #ffe500; border-radius: 14px; background: #171717; color: #fff; font: 400 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; --wn-fg: #fff; --wn-dim: #a3a3a3; --wn-line: rgba(255,255,255,0.1); }
     .wn-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+    /* Centered on the page. The page's own CSS reset zeroes <dialog> margins,
+       which pinned ours to the top-left corner. */
+    #${CARD_ID} .wn-dialog[open] { position: fixed !important; inset: 0 !important; margin: auto !important; height: fit-content !important; transform: none !important; }
     #${CARD_ID} .wn-help { font: 700 14px/1 system-ui, sans-serif; }
     .wn-blurb { margin: 8px 0 4px; color: var(--wn-dim); font-size: 13px; }
     .wn-links { margin: 0 0 12px; font-size: 12px; color: var(--wn-dim); }
