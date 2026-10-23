@@ -325,6 +325,11 @@ async function printForClose(entry, tabId) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === 'open-options') {
+    chrome.runtime.openOptionsPage();
+    sendResponse({ ok: true });
+    return false;
+  }
   if (msg?.type === 'capture-event') {
     captureQueue.push(msg.event);
     if (!captureFlush) captureFlush = setTimeout(flushCapture, 300);

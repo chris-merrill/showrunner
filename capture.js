@@ -42,9 +42,6 @@
   let lastStatus = '';
   let closedKey = '';           // title|price|winner of the close already reported
   let history = [];             // closes, newest last: {ts, title, price, winner, bids}
-  // Compact by default (owner, 2026-10-23: "taking over too much real estate"):
-  // one header line plus the auto-print switch; click the header for details.
-  let collapsed = true;
   const recentCloses = new Map(); // title|price|winner -> ts of the close we reported
   const DUP_WINDOW_MS = 5 * 60 * 1000;
   const timers = [];              // every setInterval, so an orphaned copy can stop itself
@@ -205,8 +202,6 @@
     #${CARD_ID} .wn-state[data-state="sold"] { background: #2f9e44; color: #fff; }
     #${CARD_ID} .wn-state[data-state="waiting"] { background: #ffe500; color: #111; }
     #${CARD_ID} .wn-body { padding: 10px 24px 16px; }
-    #${CARD_ID}[data-collapsed] .wn-body { display: none; }
-    #${CARD_ID}[data-collapsed] .wn-head { padding-bottom: 16px; }
     #${CARD_ID} .wn-title { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
     #${CARD_ID} .wn-meta { color: var(--wn-dim); margin-top: 2px; font-size: 13px; }
     #${CARD_ID} .wn-who { margin-top: 6px; font-size: 13px; }
@@ -251,16 +246,24 @@
     #${CARD_ID} .wn-name b { font-weight: 700; }
     #${CARD_ID} .wn-tool { color: var(--wn-dim); font-weight: 500; margin-left: 6px; }
     #${CARD_ID} .wn-tool::before { content: '·'; margin-right: 6px; }
+    #${CARD_ID} .wn-gear { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-right: -6px; border: 0; border-radius: 999px; background: transparent; color: var(--wn-dim); cursor: pointer; }
+    #${CARD_ID} .wn-gear:hover { color: var(--wn-fg); background: rgba(128, 128, 128, 0.15); }
+    #${CARD_ID} :is(.wn-title, .wn-meta, .wn-who) { display: none; }
+    #${CARD_ID} .wn-body:not(:has(.wn-print:not(:empty), .wn-again:not([style*="none"]))) { display: none; }
+    #${CARD_ID} .wn-head { cursor: default; padding-bottom: 10px; }
+    .wn-dialog { width: 360px; max-width: calc(100vw - 32px); max-height: 80vh; overflow: auto; padding: 16px 18px; border: 0; border-top: 3px solid #ffe500; border-radius: 14px; background: #171717; color: #fff; font: 400 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; --wn-fg: #fff; --wn-dim: #a3a3a3; --wn-line: rgba(255,255,255,0.1); }
+    .wn-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+    .wn-dhead { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .wn-dhead .wn-name { flex: 1; font-size: 15px; }
+    .wn-close { border: 0; background: transparent; color: var(--wn-dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px; }
+    .wn-noprinter { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 229, 0, 0.12); font-size: 13px; }
+    .wn-more { margin-top: 14px; width: 100%; padding: 9px 12px; border: 1px solid var(--wn-line); border-radius: 999px; background: transparent; color: var(--wn-fg); font: inherit; font-weight: 600; cursor: pointer; }
+    .wn-more:hover { background: rgba(128, 128, 128, 0.15); }
     /* Compact sizing for the seller dashboard. */
     #${CARD_ID} { margin-bottom: 12px; border-radius: 12px; }
     #${CARD_ID} .wn-head { padding: 10px 14px 0; gap: 8px; }
     #${CARD_ID} .wn-name { font-size: 14px; }
     #${CARD_ID} .wn-body { padding: 6px 14px 10px; }
-    #${CARD_ID}[data-collapsed] .wn-body { display: block; padding-top: 0; }
-    #${CARD_ID}[data-collapsed] .wn-head { padding-bottom: 6px; }
-    #${CARD_ID}[data-collapsed] :is(.wn-title, .wn-meta, .wn-who, .wn-print, .wn-hist-head, .wn-hist) { display: none; }
-    #${CARD_ID}[data-collapsed] .wn-auto { margin-top: 2px; padding-top: 6px; }
-    #${CARD_ID}[data-collapsed] .wn-again { margin-top: 6px; padding: 6px 10px; }
     #${CARD_ID} .wn-auto input { position: absolute; opacity: 0; pointer-events: none; }
     #${CARD_ID} .wn-sw {
       display: block;
@@ -453,7 +456,6 @@
     if (card) { mountCard(); return; } // same card, re-attached after a re-render
     card = el('div');
     card.id = CARD_ID;
-    if (collapsed) card.dataset.collapsed = '';
     const head = el('div', 'wn-head');
     // Showrunner branding (owner, 2026-10-23: "hard to tell what is ours"):
     // the extension's own yellow clapperboard icon, the name, then the tool.
@@ -463,11 +465,14 @@
     const name = el('span', 'wn-name');
     name.append(el('b', null, 'Showrunner'), el('span', 'wn-tool', 'Labels'));
     const state = el('span', 'wn-state', '—');
-    head.append(logo, name, state);
-    head.addEventListener('click', () => {
-      collapsed = !collapsed;
-      card.toggleAttribute('data-collapsed', collapsed);
-    });
+    // Settings live behind a gear (owner, 2026-10-23: "be thoughtful about our
+    // presence on the screen"); the card itself is just status + Reprint last.
+    const gear = el('button', 'wn-gear');
+    gear.type = 'button';
+    gear.title = 'Showrunner settings and sale history';
+    gear.setAttribute('aria-label', gear.title);
+    gear.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+    head.append(logo, name, state, gear);
     const body = el('div', 'wn-body');
     const title = el('div', 'wn-title', '');
     const meta = el('div', 'wn-meta', '');
@@ -497,6 +502,8 @@
     });
     auto.append(el('span', null, 'Auto-print a label on each sale'), autoInput, el('i', 'wn-sw'));
     auto.style.display = printerReady ? '' : 'none';
+    const noPrinter = el('div', 'wn-noprinter', 'No label printer found. Open All settings to set one up.');
+    noPrinter.style.display = printerReady ? 'none' : '';
 
     const histHead = el('div', 'wn-hist-head');
     const clearAll = el('button', 'wn-clear', 'Clear all');
@@ -505,9 +512,35 @@
     clearAll.addEventListener('click', () => removeCloses());
     histHead.append(el('span', null, 'History'), clearAll);
     const hist = el('ul', 'wn-hist');
-    body.append(title, meta, who, print, again, auto, histHead, hist);
+    body.append(title, meta, who, print, again);
     card.append(head, body);
-    cardEls = { state, title, meta, who, print, hist, autoInput, auto, again };
+
+    // The settings modal: auto-print, sale history, a link to all settings.
+    const dlg = el('dialog', 'wn-dialog');
+    dlg.id = CARD_ID + '-dialog';
+    const dHead = el('div', 'wn-dhead');
+    const dLogo = logo.cloneNode();
+    const dName = el('span', 'wn-name');
+    dName.append(el('b', null, 'Showrunner'), el('span', 'wn-tool', 'Labels'));
+    const close = el('button', 'wn-close', '×');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', () => dlg.close());
+    dHead.append(dLogo, dName, close);
+    const more = el('button', 'wn-more', 'All settings');
+    more.type = 'button';
+    more.addEventListener('click', () => {
+      try { chrome.runtime.sendMessage({ type: 'open-options' }, () => void chrome.runtime.lastError); } catch (_) { /* orphaned */ }
+    });
+    dlg.append(dHead, auto, noPrinter, histHead, hist, more);
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // backdrop click
+    gear.addEventListener('click', () => {
+      // Stays inside the card (so the card's styles apply); showModal lifts it
+      // into the top layer above the page anyway.
+      if (!dlg.open) dlg.showModal();
+    });
+    card.append(dlg);
+    cardEls = { state, title, meta, who, print, hist, autoInput, auto, again, noPrinter, dlg };
     mountCard();
     renderHistory();
   }
@@ -779,7 +812,10 @@
       chrome.runtime.sendMessage({ type: 'printer-status', force: !!force }, (res) => {
         void chrome.runtime.lastError;
         printerReady = !!res?.ready;
-        if (cardEls) cardEls.auto.style.display = printerReady ? '' : 'none';
+        if (cardEls) {
+          cardEls.auto.style.display = printerReady ? '' : 'none';
+          cardEls.noPrinter.style.display = printerReady ? 'none' : '';
+        }
         updateAgain();
       });
     } catch (_) { /* orphaned copy */ }
