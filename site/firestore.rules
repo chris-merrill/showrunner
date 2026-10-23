@@ -1,0 +1,26 @@
+rules_version = '2';
+// Showrunner (project showrunner-tools).
+// feedback: anyone (the extension, no sign-in during the public beta) may ADD one
+// well-formed report; nobody can read, change or delete them from a client.
+// The owner reads them in the Firebase console (later: an admin page).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /feedback/{id} {
+      allow create: if request.resource.data.keys().hasOnly(
+                         ['type', 'message', 'email', 'version', 'page', 'diagnostics'])
+                    && request.resource.data.type in ['bug', 'feature', 'feedback']
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() > 0
+                    && request.resource.data.message.size() <= 5000
+                    && (!('email' in request.resource.data) || (request.resource.data.email is string && request.resource.data.email.size() <= 200))
+                    && request.resource.data.version is string && request.resource.data.version.size() <= 20
+                    && (!('page' in request.resource.data) || (request.resource.data.page is string && request.resource.data.page.size() <= 40))
+                    && (!('diagnostics' in request.resource.data) || (request.resource.data.diagnostics is string && request.resource.data.diagnostics.size() <= 20000));
+      // (when it arrived = the document's own createTime)
+      allow read, update, delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
