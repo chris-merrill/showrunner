@@ -430,7 +430,6 @@
   function ensureCard() {
     injectStyle();
     if (card && document.contains(card)) {
-      // Column appeared after we fell back to floating? Move in.
       return;
     }
     if (card) { mountCard(); return; } // same card, re-attached after a re-render
