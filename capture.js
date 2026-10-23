@@ -89,11 +89,11 @@
     return { title, subtitle, bids, price, status, winner, winState, panel, sold, running, waiting };
   }
 
-  // The card belongs on a live show only (owner, 2026-10-23: it showed on the
-  // home page and the login page). A show is a /live/ URL, or any page that has
-  // a show's Shop column.
+  // Showrunner is a seller's tool: the card shows only on the seller's own live
+  // show, Whatnot's dashboard at /dashboard/live/<id> (owner, 2026-10-23: "tune it
+  // to only show on seller pages"). Never on viewer pages, home, or login.
   function onShowPage() {
-    return /\/live\//.test(location.pathname) || !!document.querySelector(SHOP_COLUMN);
+    return /^\/dashboard\/live\//.test(location.pathname);
   }
 
   function tick() {

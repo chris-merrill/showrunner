@@ -839,7 +839,11 @@
     scheduleDecorate();
   }
 
+  // Seller pages only (owner, 2026-10-23), the same rule as the Auction card.
+  const onSellerShow = () => /^\/dashboard\/live\//.test(location.pathname);
+
   function tryAttach() {
+    if (!onSellerShow()) return false;
     if (region && document.contains(region)) return true;
     const found = findChatByAnchor();
     if (found) {
@@ -908,6 +912,7 @@
   // while the tab is backgrounded, so attaching is a retry loop, not a one-shot.
   intervals.push(setInterval(() => {
     if (region && document.contains(region)) return;
+    if (!onSellerShow()) return;
     attachAttempts++;
     if (tryAttach()) return;
     if (attachAttempts % 10 === 0) autoDetect();
