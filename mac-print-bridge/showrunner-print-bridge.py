@@ -84,8 +84,16 @@ def cups_dymo_queues():
         info = subprocess.run(["lpoptions", "-p", q], capture_output=True, text=True).stdout
         model = re.search(r"printer-make-and-model='([^']*)'", info)
         desc = re.search(r"printer-info='([^']*)'", info)
-        if model and "dymo" in model.group(1).lower():
-            result.append((q, (desc.group(1) if desc else q) or q, model.group(1)))
+        # A DYMO shared from another Mac/print server (driverless IPP) shows up
+        # with a generic model, so match the printer's name too.
+        name = (desc.group(1) if desc else q) or q
+        if (model and "dymo" in model.group(1).lower()) or "dymo" in name.lower():
+            # Skip queues CUPS reports offline (e.g. a USB queue whose printer is
+            # now plugged into another machine): jobs there just sit forever.
+            state = subprocess.run(["lpstat", "-l", "-p", q], capture_output=True, text=True).stdout
+            if "offline" in state.lower():
+                continue
+            result.append((q, name, model.group(1) if model else ""))
     return result
 
 
