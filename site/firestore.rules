@@ -5,6 +5,10 @@ rules_version = '2';
 // The owner reads them in the Firebase console (later: an admin page).
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
     match /feedback/{id} {
       allow create: if request.resource.data.keys().hasOnly(
                          ['type', 'message', 'email', 'version', 'page', 'diagnostics'])
@@ -19,7 +23,17 @@ service cloud.firestore {
                     && (!('page' in request.resource.data) || (request.resource.data.page is string && request.resource.data.page.size() <= 40))
                     && (!('diagnostics' in request.resource.data) || (request.resource.data.diagnostics is string && request.resource.data.diagnostics.size() <= 20000));
       // (when it arrived = the document's own createTime)
-      allow read, update, delete: if false;
+      // The admin (a uid listed in admins/, set server-side) reads the inbox and
+      // may only change a report's status.
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                    && request.resource.data.status in ['new', 'done'];
+      allow delete: if false;
+    }
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
     }
     match /{document=**} {
       allow read, write: if false;
