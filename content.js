@@ -221,7 +221,7 @@
         font: 400 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
         overflow: hidden;
       }
-      html.dark #${QCARD_ID} { --wch-fg: #fff; --wch-dim: #a3a3a3; --wch-line: rgba(255, 255, 255, 0.1); --wch-bg: #171717; }
+      html.dark #${QCARD_ID}, .dark #${QCARD_ID} { --wch-fg: #fff; --wch-dim: #a3a3a3; --wch-line: rgba(255, 255, 255, 0.1); --wch-bg: #171717; }
       #${QCARD_ID} .wch-qhead {
         display: flex;
         align-items: center;
@@ -299,7 +299,9 @@
   // (`[grid-area:sidebar]`, a flex column with a 16px gap). React reconciles
   // its own children there and leaves ours alone. Narrow layouts have no such
   // column, so there the card simply isn't shown.
-  const SIDEBAR = 'div[class*="grid-area:sidebar"]';
+  // Seller dashboard (/dashboard/live/): a 3-column grid (products | video |
+  // stats + chat). The Questions card goes at the top of the right column.
+  const SIDEBAR = 'div[class*="grid-cols-[375px_1fr"] > div:nth-child(3) > div';
   let qcard = null;
   let qcardEls = null;
   let qcardCollapsed = false;
@@ -690,10 +692,15 @@
 
   function decorateAll() {
     if (!alive()) return shutdown('context invalidated');
-    if (!rowList || !document.contains(rowList)) {
-      rowList = region ? findRowList(region) : null;
+    // Re-find while the list is missing or still short: findRowList needs 3
+    // rows, so the first couple of messages in a fresh show re-check each pass.
+    if (!rowList || !document.contains(rowList) || rowList.children.length < 3) {
+      rowList = region ? findRowList(region) || rowList : null;
     }
-    if (!rowList) return;
+    if (!rowList) {
+      renderQuestionsCard(); // an empty show still gets its card
+      return;
+    }
 
     // Self-heal: the tags are positioned by the injected stylesheet, so if it's
     // missing they render as bare inline text in the message flow. Re-add rather
@@ -748,9 +755,12 @@
 
   // Whatnot marks the chat with the semantic class `z-chat-window`. Its first
   // child is the message region; the second is the composer.
+  // Seller dashboard: the message region is the element holding Whatnot's
+  // "jump to latest" button (.z-chat-button), between the filter chips and the
+  // composer.
   function findChatByAnchor() {
-    const win = document.querySelector('.z-chat-window');
-    const el = win && win.firstElementChild;
+    const btn = document.querySelector('.z-chat-button');
+    const el = btn && btn.parentElement;
     return el && isVisible(el) ? el : null;
   }
 
@@ -805,7 +815,7 @@
   function attach(el, source) {
     if (observer) observer.disconnect();
     region = el;
-    rowList = findRowList(el) || el;
+    rowList = findRowList(el);
     attachAttempts = 0;
 
     // Messages already on screen at attach time are marked seen but never sent:
