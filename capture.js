@@ -287,6 +287,11 @@
     #${CARD_ID} .wn-chev { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-right: -6px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--wn-dim); cursor: pointer; }
     #${CARD_ID} .wn-chev:hover { color: var(--wn-fg); background: rgba(128, 128, 128, 0.15); }
     #${CARD_ID}[data-folded] .wn-status { display: none; }
+    #${CARD_ID}[data-folded] .wn-histbox { display: none; }
+    #${CARD_ID} .wn-histbox { padding: 0 14px 10px; }
+    #${CARD_ID} .wn-histbox .wn-hist-head { margin-top: 0; padding-top: 8px; }
+    #${CARD_ID} .wn-histbox .wn-hist { max-height: 132px; }
+    #${CARD_ID} .wn-histbox:not(:has(li:not(.wn-empty))) { display: none; }
     #${CARD_ID}[data-folded] .wn-head { padding-bottom: 10px; }
     #${CARD_ID} .wn-body { display: none !important; }
     #${CARD_ID} .wn-head { padding-bottom: 4px; }
@@ -622,7 +627,11 @@
     const status = el('div', 'wn-status');
     status.append(state, print, again);
     body.append(title, meta, who);
-    card.append(head, status, body);
+    // Sale history lives on the card itself (owner, 2026-10-23), newest first,
+    // each with reprint and remove; it scrolls after a few rows.
+    const histBox = el('div', 'wn-histbox');
+    histBox.append(histHead, hist);
+    card.append(head, status, histBox, body);
 
     // The settings modal: auto-print, sale history, a link to all settings.
     const dlg = el('dialog', 'wn-dialog');
@@ -802,7 +811,7 @@
         cardEls.print.textContent = 'Settings saved ✓';
       }
     });
-    dlg.append(dHead, pBox, auto, noPrinter, lBox, histHead, hist, more);
+    dlg.append(dHead, pBox, auto, noPrinter, lBox, more);
     dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // backdrop click
     gear.addEventListener('click', () => {
       // Stays inside the card (so the card's styles apply); showModal lifts it
