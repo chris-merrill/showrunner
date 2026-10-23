@@ -34,7 +34,6 @@
   <li>Open your show from <b>Seller Hub › Shows › Open show</b>. The Showrunner card appears at the top of your product list.</li>
   <li>Click <b>⚙</b> on the card: pick your printer and label, click <b>Print test label</b>, choose what goes on the label, turn on <b>Auto-print</b>, and click <b>Save</b>.</li>
 </ol>
-<p>The full setup guide is on <a href="https://github.com/chris-merrill/showrunner/blob/main/SETUP.md" target="_blank" rel="noopener">GitHub</a>.</p>
 
 <h2>Common questions</h2>
 <div class="faq">
@@ -47,7 +46,7 @@
 </div>
 
 <h2 id="contact">Contact us</h2>
-<p>Send us a note and we'll reply by email. You can also write to <a href="mailto:contact@core-commerce.io?subject=Showrunner">contact@core-commerce.io</a>.</p>
+<p>Send us a note and we'll reply by email.</p>
 <form class="contact" id="cf">
   <select id="ck" aria-label="Topic"><option value="feedback">General question or feedback</option><option value="bug">Something isn't working</option><option value="feature">Feature request</option></select>
   <input id="ce" type="email" required maxlength="200" placeholder="Your email" autocomplete="email">
@@ -76,7 +75,7 @@ f.addEventListener('submit', async (e) => {
     const res=await fetch('https://firestore.googleapis.com/v1/projects/showrunner-tools/databases/(default)/documents/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:{type:{stringValue:document.getElementById('ck').value},message:{stringValue:message},email:{stringValue:email},version:{stringValue:'site'},page:{stringValue:'support-page'}}})});
     if(!res.ok) throw new Error(res.status);
     f.reset(); r.dataset.ok='1'; r.textContent='Thanks, we got it. We\u2019ll reply by email.';
-  }catch(_){ r.dataset.ok='0'; r.textContent='Couldn\u2019t send. Please try again, or email contact@core-commerce.io.'; }
+  }catch(_){ r.dataset.ok='0'; r.textContent='Couldn\u2019t send. Please try again in a moment.'; }
   b.disabled=false; b.textContent='Send';
 });
 </script>
