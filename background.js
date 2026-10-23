@@ -46,42 +46,6 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   injectInto(tabId);
 });
 
-// ------------------------------------------------------------- classifier
-
-// The fetch runs here, not in the content script: with host permission granted
-// for the endpoint, extension-initiated requests from the service worker aren't
-// subject to CORS, so diecastr doesn't need to emit CORS headers for us.
-const DEFAULT_ENDPOINT = 'https://diecastr.app/api/is-question';
-
-async function classify(text) {
-  const { settings } = await chrome.storage.local.get('settings');
-  const endpoint = settings?.endpoint?.trim() || DEFAULT_ENDPOINT;
-  const token = settings?.token?.trim();
-  if (!token) return { error: 'no api key configured' };
-
-  try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ text }),
-    });
-
-    // The caller branches on status: 401 disables, 429 backs off, everything
-    // else falls through to the local rule.
-    if (!res.ok) return { status: res.status };
-
-    const data = await res.json();
-    return typeof data?.isQuestion === 'boolean'
-      ? { isQuestion: data.isQuestion }
-      : { error: 'malformed response' };
-  } catch (err) {
-    return { error: err.message };
-  }
-}
-
 // ------------------------------------------------------------- capture log
 
 // capture.js fires in bursts (every panel/timer change), so events are queued
@@ -444,10 +408,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg?.type === 'reconnect') {
     injectAll().then((tabs) => sendResponse({ ok: true, tabs }));
-    return true;
-  }
-  if (msg?.type === 'classify') {
-    classify(msg.text).then(sendResponse);
     return true;
   }
   return false;
