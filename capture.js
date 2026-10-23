@@ -700,6 +700,7 @@
           lSel.replaceChildren(...labels.map((l) => opt(l.code, l.label)));
           lSel.value = settings.labelKind || '30252';
           fieldState = { item: true, price: true, buyer: false, title: false, date: false, seller: false, tagline: true, ...(settings.labelFields || {}) };
+          fieldState.tagline = true;
           for (const [k] of FIELDS) boxes[k].checked = !!fieldState[k];
           drawPreview();
         });
@@ -726,7 +727,7 @@
     // background.js labelLayout() so every label stays readable.
     const FIELDS = [
       ['item', 'Item number (biggest)'], ['price', 'Price'], ['buyer', 'Buyer'],
-      ['title', 'Full title'], ['date', 'Date and time'], ['seller', 'Seller line'], ['tagline', 'Showrunner tag line'],
+      ['title', 'Full title'], ['date', 'Date and time'], ['seller', 'Seller line'], ['tagline', 'Showrunner tag line (always on)'],
     ];
     let catalog = [];
     let fieldState = {};
@@ -740,6 +741,8 @@
       const row = el('label', 'wn-check');
       const cb = el('input');
       cb.type = 'checkbox';
+      // The tag line is always on during the beta (owner, 2026-10-23).
+      if (k === 'tagline') { cb.checked = true; cb.disabled = true; row.title = 'Included on every label during the beta'; }
       cb.addEventListener('change', async () => {
         fieldState[k] = cb.checked;
         await savePrinter({ labelFields: { ...fieldState } });

@@ -234,6 +234,7 @@ function itemNumber(title) {
 // tag-line bar. Shared with the settings window's live preview.
 function labelLayout(entry, settings) {
   const f = { ...DEFAULT_LABEL_FIELDS, ...(settings.labelFields || {}) };
+  f.tagline = true; // always on during the beta (owner, 2026-10-23), whatever storage says
   const lines = [];
   if (f.item) lines.push({ text: itemNumber(entry.title) || '(no title)', size: 'xl', bold: true });
   if (f.price && entry.price) lines.push({ text: entry.price, size: 'l', bold: true });
