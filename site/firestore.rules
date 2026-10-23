@@ -1,8 +1,7 @@
 rules_version = '2';
 // Showrunner (project showrunner-tools).
-// feedback: anyone (the extension, no sign-in during the public beta) may ADD one
-// well-formed report; nobody can read, change or delete them from a client.
-// The owner reads them in the Firebase console (later: an admin page).
+// feedback: written only by the API (Admin SDK); the admin reads it at /admin.
+// rate/: the API's rate-limit counters, never readable or writable by clients.
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAdmin() {
@@ -10,19 +9,9 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
     match /feedback/{id} {
-      allow create: if request.resource.data.keys().hasOnly(
-                         ['type', 'message', 'email', 'version', 'page', 'diagnostics'])
-                    && request.resource.data.type in ['bug', 'feature', 'feedback']
-                    && request.resource.data.message is string
-                    && request.resource.data.message.size() > 0
-                    && request.resource.data.message.size() <= 5000
-                    && request.resource.data.email is string
-                    && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
-                    && request.resource.data.email.size() <= 200
-                    && request.resource.data.version is string && request.resource.data.version.size() <= 20
-                    && (!('page' in request.resource.data) || (request.resource.data.page is string && request.resource.data.page.size() <= 40))
-                    && (!('diagnostics' in request.resource.data) || (request.resource.data.diagnostics is string && request.resource.data.diagnostics.size() <= 20000));
-      // (when it arrived = the document's own createTime)
+      // Reports arrive only through the API (functions/index.js: Turnstile for
+      // the website, install id + rate limit for the extension). No client writes.
+      allow create: if false;
       // The admin (a uid listed in admins/, set server-side) reads the inbox and
       // may only change a report's status.
       allow read: if isAdmin();

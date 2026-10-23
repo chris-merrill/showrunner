@@ -51,6 +51,7 @@
   <select id="ck" aria-label="Topic"><option value="feedback">General question or feedback</option><option value="bug">Something isn't working</option><option value="feature">Feature request</option></select>
   <input id="ce" type="email" required maxlength="200" placeholder="Your email" autocomplete="email">
   <textarea id="cm" rows="5" required maxlength="5000" placeholder="How can we help?"></textarea>
+  <div class="cf-turnstile" data-sitekey="0x4AAAAAAFi4s8bBx5pVf5_c" data-theme="dark" data-action="contact"></div>
   <div><button class="btn" id="cs" type="submit">Send</button></div>
   <div class="sent" id="cr"></div>
 </form>
@@ -63,19 +64,25 @@
   </div>
 </footer>
 <script type="module" src="/assets/acct.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script>
-// Same inbox as the extension's ? window (Firestore feedback, create-only rules).
+// Goes to the same inbox as the extension's ? window, through Showrunner's API,
+// which checks the Turnstile token with Cloudflare before saving anything.
 const f=document.getElementById('cf'), r=document.getElementById('cr'), b=document.getElementById('cs');
 f.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email=document.getElementById('ce').value.trim(), message=document.getElementById('cm').value.trim();
   if(!email||!message) return;
-  b.disabled=true; b.textContent='Sending…'; r.textContent='';
+  const token = window.turnstile ? turnstile.getResponse() : '';
+  if(!token){ r.dataset.ok='0'; r.textContent='Please complete the check above, then send.'; return; }
+  b.disabled=true; b.textContent='Sending\u2026'; r.textContent='';
   try{
-    const res=await fetch('https://firestore.googleapis.com/v1/projects/showrunner-tools/databases/(default)/documents/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:{type:{stringValue:document.getElementById('ck').value},message:{stringValue:message},email:{stringValue:email},version:{stringValue:'site'},page:{stringValue:'support-page'}}})});
-    if(!res.ok) throw new Error(res.status);
+    const res=await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:document.getElementById('ck').value,message,email,page:'support-page',turnstileToken:token})});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(j.error||res.status);
     f.reset(); r.dataset.ok='1'; r.textContent='Thanks, we got it. We\u2019ll reply by email.';
-  }catch(_){ r.dataset.ok='0'; r.textContent='Couldn\u2019t send. Please try again in a moment.'; }
+  }catch(err){ r.dataset.ok='0'; r.textContent='Couldn\u2019t send ('+err.message+'). Please try again in a moment.'; }
+  if(window.turnstile) turnstile.reset();
   b.disabled=false; b.textContent='Send';
 });
 </script>
