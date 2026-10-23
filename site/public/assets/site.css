@@ -47,3 +47,8 @@ footer .row{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-betw
 footer a{color:var(--mute)}
 footer .fl a{margin-right:18px}
 @media (max-width:600px){.wrap{padding:0 16px} nav .links>a{display:none} main.prose{padding-top:32px}}
+
+/* Sticky header (owner, 2026-10-23): stays at the top while scrolling; the
+   shadow + clip-path trick paints its background edge to edge. */
+header.wrap{position:sticky;top:0;z-index:50;background:rgba(15,14,20,.88);box-shadow:0 0 0 100vmax rgba(15,14,20,.88);clip-path:inset(0 -100vmax);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+section[id],h2[id]{scroll-margin-top:84px}

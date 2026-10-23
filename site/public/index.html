@@ -93,6 +93,11 @@ nav .links .menu a{margin-left:0;color:var(--ink)}
   .wrap{padding:0 16px} nav .links a:not(:last-child){display:none}
   .hero{padding-top:56px;padding-bottom:44px} .tool{min-height:0} section{padding-top:48px;padding-bottom:48px}
 }
+
+/* Sticky header (owner, 2026-10-23): stays at the top while scrolling; the
+   shadow + clip-path trick paints its background edge to edge. */
+header.wrap{position:sticky;top:0;z-index:50;background:rgba(15,14,20,.88);box-shadow:0 0 0 100vmax rgba(15,14,20,.88);clip-path:inset(0 -100vmax);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+section[id],h2[id]{scroll-margin-top:84px}
 </style>
 </head>
 <body>

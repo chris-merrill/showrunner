@@ -64,6 +64,11 @@ pre{background:#0b0a10;border:1px solid var(--line);border-radius:10px;padding:1
 .empty{color:var(--mute);text-align:center;padding:40px 0}
 .err{color:#ff8787;font-size:13px}
 @media (max-width:600px){.status{margin-left:0;width:100%}}
+
+/* Sticky header (owner, 2026-10-23): stays at the top while scrolling; the
+   shadow + clip-path trick paints its background edge to edge. */
+header.wrap{position:sticky;top:0;z-index:50;background:rgba(15,14,20,.88);box-shadow:0 0 0 100vmax rgba(15,14,20,.88);clip-path:inset(0 -100vmax);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+section[id],h2[id]{scroll-margin-top:84px}
 </style>
 </head>
 <body>
