@@ -455,34 +455,41 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // ------------------------------------------------------------------ feedback
 
-// Feedback, bug reports and feature requests go to Showrunner's own database
-// (Firebase project showrunner-tools, collection `feedback`). Its rules allow
-// adding one well-formed report and nothing else: no client can read them back.
-const FEEDBACK_URL =
-  'https://firestore.googleapis.com/v1/projects/showrunner-tools/databases/(default)/documents/feedback';
+// Feedback, bug reports and feature requests go to Showrunner's API
+// (showrunner.tools/api/feedback, a function in project showrunner-tools). The
+// database refuses direct writes; the API rate-limits per install until
+// signed-in licenses replace the install id.
+const FEEDBACK_URL = 'https://showrunner.tools/api/feedback';
+
+async function installId() {
+  const { installId: id } = await chrome.storage.local.get('installId');
+  if (id) return id;
+  const fresh = crypto.randomUUID();
+  await chrome.storage.local.set({ installId: fresh });
+  return fresh;
+}
 
 async function sendFeedback({ kind, message, email, includeDiagnostics, page }) {
-  const fields = {
-    type: { stringValue: ['bug', 'feature', 'feedback'].includes(kind) ? kind : 'feedback' },
-    message: { stringValue: String(message || '').slice(0, 5000) },
-    version: { stringValue: chrome.runtime.getManifest().version },
-    page: { stringValue: String(page || '').slice(0, 40) },
+  const body = {
+    type: ['bug', 'feature', 'feedback'].includes(kind) ? kind : 'feedback',
+    message: String(message || '').slice(0, 5000),
+    email: String(email || '').slice(0, 200),
+    version: chrome.runtime.getManifest().version,
+    page: String(page || '').slice(0, 40),
+    installId: await installId(),
   };
-  if (email) fields.email = { stringValue: String(email).slice(0, 200) };
   if (includeDiagnostics) {
     const { settings = {}, capture = [] } = await chrome.storage.local.get(['settings', 'capture']);
-    const diag = {
+    body.diagnostics = JSON.stringify({
       userAgent: navigator.userAgent,
       printer: { name: settings.printerName || null, label: settings.labelKind || null, autoPrint: !!settings.printOnClose },
       recent: capture.slice(-15),
-    };
-    fields.diagnostics = { stringValue: JSON.stringify(diag).slice(0, 20000) };
+    }).slice(0, 20000);
   }
-  const r = await fetch(FEEDBACK_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields }),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const r = await fetch(FEEDBACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    throw new Error(j.error || `HTTP ${r.status}`);
+  }
   return { ok: true };
 }

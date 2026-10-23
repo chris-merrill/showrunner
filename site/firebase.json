@@ -60,9 +60,25 @@
           }
         ]
       }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/feedback",
+        "function": {
+          "functionId": "feedback",
+          "region": "us-central1"
+        }
+      }
     ]
   },
   "firestore": {
     "rules": "firestore.rules"
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22"
+    }
+  ]
 }
