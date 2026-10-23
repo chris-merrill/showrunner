@@ -79,7 +79,9 @@ exports.feedback = onRequest(
     if (!EMAIL_RE.test(doc.email)) return res.status(400).json({ error: 'valid email required' });
 
     try {
-      if (!(await underLimit('ip', ip || 'unknown'))) return res.status(429).json({ error: 'too many messages, try again later' });
+      // Rate limit by a one-way hash of the IP: the address itself is never stored.
+      const ipKey = require('crypto').createHash('sha256').update(`showrunner:${ip || 'unknown'}`).digest('hex').slice(0, 32);
+      if (!(await underLimit('ip', ipKey))) return res.status(429).json({ error: 'too many messages, try again later' });
       if (fromSite) {
         if (!(await verifyTurnstile(str(b.turnstileToken, 4096), ip))) return res.status(403).json({ error: 'verification failed' });
       } else {
