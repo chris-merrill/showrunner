@@ -1,6 +1,6 @@
 # Showrunner: accounts and licensing (design)
 
-Date: 2026-10-23 · Owner: Chris Merrill · Status: draft for owner review
+Date: 2026-10-23 · Owner: Chris Merrill · Status: draft for owner review · Ships as **Showrunner 2.0** (owner: "v2.x is where we will implement our licensing scheme")
 Repo: `chris-merrill/showrunner` (`~/Projects/whatnot-chat-helper`) · Firebase project: `showrunner-tools`
 
 ## Intent
@@ -49,6 +49,19 @@ everything around it so billing drops in later.
 - Free tier only the admin can grant; 7-day free trial, no card.
 - Stripe later.
 
+## Team members (owner: on his mind; needed for the AI chat moderator later)
+- An account is a **seller team**: one owner (the subscriber) plus invited **members** (helpers, packers,
+  moderators), each signing in with their own Google account.
+- `accounts/{uid}/members/{memberUid}`: `{ email, role: 'helper', invitedAt, joinedAt }`; `members/{memberUid}` index
+  `{ accountUid }` so a member's sign-in finds their team.
+- Invite: owner enters an email on /account → `POST /api/members/invite` creates `invites/{token}` (expires 7 days)
+  → the owner shares the link `showrunner.tools/join/<token>` (no email sending this round) → the invitee signs in
+  with Google and joins.
+- A member connects their own computers to the team's shop like the owner; licenses carry `uid` (the member) and
+  `account` (the team). The owner can remove a member (their computers stop at next renewal).
+- Roles: `owner` and `helper` now; the AI moderator later adds its own role. Unlimited members for now.
+- This replaces "share the seller's Google login".
+
 ## Decided by Claude (owner may override)
 
 ### Accounts (site)
@@ -78,7 +91,7 @@ everything around it so billing drops in later.
 ### Connecting the extension
 1. Card shows **Connect** (no license yet) → opens `https://showrunner.tools/connect?ext=<extension id>&shop=<shopId>&device=<deviceId>`.
 2. The page signs the seller in if needed, shows "Connect this computer to <email> for shop <shop>", and on click
-   calls `POST /api/connect` (Firebase ID token): the API checks or claims the shop, registers the device
+   calls `POST /api/connect` (Firebase ID token; owner or member of the team): the API checks or claims the shop, registers the device
    `accounts/{uid}/devices/{deviceId}` (`name` from the browser/OS, `createdAt`, `lastSeen`, `revoked:false`), and
    returns a **device secret** (random 32 bytes, only its SHA-256 stored) and a first license.
 3. The page hands `{deviceSecret, license}` to the extension with `chrome.runtime.sendMessage(extId, …)`; the
@@ -98,9 +111,9 @@ everything around it so billing drops in later.
   matches the shop on the page, and `now < exp + 72 h` (grace for a dropped connection mid-show).
 - Unlicensed or ended: the card says why ("Connect your Showrunner account", "Your trial has ended", "This computer
   was removed") with one button; nothing prints, including reprints and test prints.
-- Transition: hand-installed copies without a license keep working (owner: never cut off Pablo) until the owner
-  connects them; store installs require a license once this version ships (the public-beta end date then becomes
-  moot). Exact rule: unpacked + no license = allowed; store + no license = "Connect" required.
+- **Every 2.x copy needs a license**, store or hand-installed (owner, 2026-10-23). 1.x stays as it is: Pablo keeps
+  1.x from the public GitHub repo until he's set up on 2.x with his own free account. The repo stays public until
+  the owner confirms Pablo is good on 2.x; making it private comes after that.
 
 ### API (site/functions, same `feedback` pattern)
 | Route | Auth | Does |
