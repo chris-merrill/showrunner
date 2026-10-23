@@ -251,6 +251,9 @@
     #${CARD_ID} :is(.wn-title, .wn-meta, .wn-who) { display: none; }
     #${CARD_ID} .wn-body:not(:has(.wn-print:not(:empty), .wn-again:not([style*="none"]))) { display: none; }
     #${CARD_ID} .wn-head { cursor: default; padding-bottom: 10px; }
+    #${CARD_ID} .wn-chev { flex: none; width: 28px; height: 28px; margin-right: -8px; border: 0; border-radius: 999px; background: transparent; color: var(--wn-dim); font-size: 20px; line-height: 1; cursor: pointer; }
+    #${CARD_ID} .wn-chev:hover { color: var(--wn-fg); background: rgba(128, 128, 128, 0.15); }
+    #${CARD_ID}[data-folded] .wn-body { display: none; }
     .wn-dialog { width: 360px; max-width: calc(100vw - 32px); max-height: 80vh; overflow: auto; padding: 16px 18px; border: 0; border-top: 3px solid #ffe500; border-radius: 14px; background: #171717; color: #fff; font: 400 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; --wn-fg: #fff; --wn-dim: #a3a3a3; --wn-line: rgba(255,255,255,0.1); }
     .wn-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
     .wn-dhead { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
@@ -429,6 +432,8 @@
 
   let card = null;
   let cardEls = null;
+  let folded = false;
+  try { chrome.storage.local.get('cardFolded').then((r) => { folded = !!r.cardFolded; if (cardEls) cardEls.setChev(); }); } catch (_) { /* orphaned */ }
 
   // The left column of a live show ("Shop" card lives in it). Our card goes in
   // as its first child; React reconciles its own children and leaves ours be.
@@ -472,7 +477,23 @@
     gear.title = 'Showrunner settings and sale history';
     gear.setAttribute('aria-label', gear.title);
     gear.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
-    head.append(logo, name, state, gear);
+    // Collapse (owner, 2026-10-23: "icons > and \/"): a chevron folds the card
+    // to its header line. Remembered across reloads.
+    const chev = el('button', 'wn-chev');
+    chev.type = 'button';
+    const setChev = () => {
+      card.toggleAttribute('data-folded', folded);
+      chev.textContent = folded ? '›' : '⌄';
+      chev.title = folded ? 'Show details' : 'Hide details';
+      chev.setAttribute('aria-expanded', String(!folded));
+    };
+    chev.addEventListener('click', () => {
+      folded = !folded;
+      setChev();
+      try { chrome.storage.local.set({ cardFolded: folded }); } catch (_) { /* orphaned */ }
+    });
+    setChev();
+    head.append(logo, name, state, gear, chev);
     const body = el('div', 'wn-body');
     const title = el('div', 'wn-title', '');
     const meta = el('div', 'wn-meta', '');
@@ -540,7 +561,7 @@
       if (!dlg.open) dlg.showModal();
     });
     card.append(dlg);
-    cardEls = { state, title, meta, who, print, hist, autoInput, auto, again, noPrinter, dlg };
+    cardEls = { state, title, meta, who, print, hist, autoInput, auto, again, noPrinter, dlg, setChev };
     mountCard();
     renderHistory();
   }
