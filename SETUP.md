@@ -1,14 +1,14 @@
 # Showrunner — setup guide for sellers
 
-What it does, once set up: while you're live on Whatnot, it highlights viewer
-questions in chat and lists them in a card above the chat, shows the current
-auction in a card above your shop list, and prints a label on your DYMO
-LabelWriter the moment each auction closes — item title, date and time, and
-the buyer — so you can stick it on the item.
+What it does, once set up: while you run your show from Whatnot's **seller
+dashboard** (Seller Hub › Shows › Open show), a small Showrunner card at the top
+of your product list follows the current auction, and the moment an auction is
+won your DYMO LabelWriter prints a label: the **item number** (the `#94` in your
+title) big, then the price, plus anything else you switch on.
 
 You need: Chrome on Windows (or Mac), a DYMO LabelWriter (450 or 550) plugged in
-by USB, and a roll of DYMO **30252 address labels** (the 550 only takes DYMO-brand
-labels).
+by USB, and a roll of DYMO labels (1 × 1 in **30332** or 3½ × 1⅛ in **30252**
+both work; the 550 only takes DYMO-brand labels).
 
 ## 1. Install DYMO Connect (one time)
 
@@ -39,45 +39,29 @@ same on both.
 
 ## 3. Set it up (one time)
 
-Click the extension's toolbar icon. A settings page opens.
+Open your show from **Seller Hub › Shows › Open show** (the extension only
+appears on that page). At the top of the left column you'll see the
+**Showrunner** card. Click its **⚙** (gear):
 
-**Label printer**
-1. Click **Detect printers**. It should list "DYMO service: running" and your
-   LabelWriter. If it says *not reachable*, DYMO Connect isn't installed or its
-   service hasn't started yet: restart the PC and try again.
-2. Make sure your LabelWriter is chosen under **Printer**, **Label** is
-   *30252 Address*, and type your shop name in **Seller line** if you want it on
-   each label.
-3. Click **Save**, then **Print test label**. A sample label comes out.
-4. Turn on **Print a label when an auction closes**.
-
-**Auction capture**: turn on **Capture auction closes**. This shows the auction
-card on your show and is what triggers the labels.
-
-**Chat**: leave **Highlight questions**, **Allow resolve** and **Questions card**
-on. **Smart detection** is optional; it catches questions with no "?" in them
-and needs a key (ask Chris).
+1. **Printer**: click **Find printers** and pick your LabelWriter.
+2. **Label**: pick the roll that's loaded (for example *30332 1 in x 1 in*).
+3. **Seller line** (optional): your shop name, if you turn that field on.
+4. Click the yellow **Print test label**. A sample label comes out.
+5. **Label layout**: tick what goes on the label and check the preview.
+   Item number and price are on by default; the small "showrunner.tools" bar
+   at the bottom is always included during the beta.
+6. Turn on **Auto-print a label on each sale**, then click **Save**.
 
 ## 4. During a show
 
-Open your show in Chrome like you normally do (the extension only works in
-Chrome, on `whatnot.com`).
-
-- **Top right, next to your avatar**: the Showrunner button (a clapperboard).
-  Yellow means it's on: both cards are shown and labels print. Click it to turn
-  everything off and on without opening settings. Chat highlighting stays on
-  either way.
-- **Above your shop list**: the **Auction** card. It follows the current item
-  and shows *Running*, *Sold* or *Awaiting next item*, who's winning, and
-  "Label printed ✓" after each sale. **Reprint last label** prints the most
-  recent sale's label again, one tap per extra copy (for a bundle of cars that
-  each need the same label). Under **History**, every sale of the show
-  with a printer icon to **reprint** that label (say the first one jammed) and a
-  × to remove it from the list. The **Auto-print** switch there is the same as
-  the settings-page one.
-- **Above the chat**: the **Questions** card, newest first, with how long each
-  has been waiting. Click the ✓ when you've answered one.
-- Questions are also highlighted in orange in the chat itself.
+- **The Showrunner card** (top of the left column) shows the auction:
+  *Running 04:41*, then *Sold* with "Label printed ✓". **Reprint last** prints
+  the latest sale's label again, one tap per extra copy (for a bundle).
+- **History** on the card lists every sale of the show, newest first, with a
+  printer icon to reprint that label and × to remove it.
+- **⚙** opens the printer and label settings; **⌄ / ›** folds the card to one line.
+- **?** is how to reach us: report a bug, request a feature or send feedback.
+  It asks for your email once (so we can reply) and remembers it.
 
 If a label doesn't print, the card says why in red. The usual causes: the
 printer is off or out of labels, or DYMO Connect's service isn't running
@@ -91,7 +75,8 @@ folder, then click the refresh arrow on Showrunner's card at
 
 ## Privacy
 
-The extension only reads the Whatnot pages you have open. It never clicks,
-bids, posts or sends anything to Whatnot on your behalf, and it doesn't send
-your chat anywhere except, if you turn Smart detection on, the message text to
-the question-detection service to decide whether it's a question.
+The extension only reads your own Whatnot seller page. It never clicks, bids,
+posts or sends anything to Whatnot on your behalf. The only thing it sends
+anywhere is what you choose to send with **?** (your message, your email and,
+if you leave the box ticked, your printer settings and recent sales), to
+Showrunner so we can help.

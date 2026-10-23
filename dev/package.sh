@@ -11,7 +11,7 @@ mkdir -p dist
 
 ext="dist/${name}-${version}.zip"
 rm -f "$ext"
-zip -q -r "$ext" manifest.json background.js content.js capture.js options icons -x '*.DS_Store'
+zip -q -r "$ext" manifest.json background.js capture.js options icons -x '*.DS_Store'
 echo "built $ext ($(du -h "$ext" | cut -f1))"
 
 mac="dist/${name}-mac-print-bridge-${version}.zip"
