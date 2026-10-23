@@ -288,6 +288,13 @@
     .wn-dhead { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
     .wn-dhead .wn-name { flex: 1; font-size: 15px; }
     .wn-close { border: 0; background: transparent; color: var(--wn-dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px; }
+    .wn-pbox { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--wn-line); }
+    .wn-plabel { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--wn-dim); margin-top: 4px; }
+    .wn-prow { display: flex; gap: 8px; align-items: center; }
+    .wn-prow select { flex: 1; min-width: 0; }
+    .wn-pnote { font-size: 12px; color: var(--wn-dim); }
+    #${CARD_ID} .wn-dialog select.wn-input { appearance: auto; height: 34px; padding: 4px 8px; background: #222; color: #fff; }
+    #${CARD_ID} .wn-dialog .wn-kind { white-space: nowrap; }
     .wn-noprinter { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 229, 0, 0.12); font-size: 13px; }
     .wn-more { margin-top: 14px; width: 100%; padding: 9px 12px; border: 1px solid var(--wn-line); border-radius: 999px; background: transparent; color: var(--wn-fg); font: inherit; font-weight: 600; cursor: pointer; }
     .wn-more:hover { background: rgba(128, 128, 128, 0.15); }
@@ -561,7 +568,7 @@
     });
     auto.append(el('span', null, 'Auto-print a label on each sale'), autoInput, el('i', 'wn-sw'));
     auto.style.display = printerReady ? '' : 'none';
-    const noPrinter = el('div', 'wn-noprinter', 'No label printer found. Open All settings to set one up.');
+    const noPrinter = el('div', 'wn-noprinter', 'No label printer ready. Choose one above, or open All settings for setup help.');
     noPrinter.style.display = printerReady ? 'none' : '';
 
     const histHead = el('div', 'wn-hist-head');
@@ -593,12 +600,93 @@
     more.addEventListener('click', () => {
       try { chrome.runtime.sendMessage({ type: 'open-options' }, () => void chrome.runtime.lastError); } catch (_) { /* orphaned */ }
     });
-    dlg.append(dHead, auto, noPrinter, histHead, hist, more);
+    // Printer settings right here (owner, 2026-10-23: "so they don't have to go
+    // into the extension settings"). Same storage keys as the settings page;
+    // every change saves at once.
+    const pBox = el('div', 'wn-pbox');
+    const pRow = el('div', 'wn-prow');
+    const pSel = el('select', 'wn-input');
+    const pFind = el('button', 'wn-kind', 'Find printers');
+    pFind.type = 'button';
+    pRow.append(pSel, pFind);
+    const lSel = el('select', 'wn-input');
+    const sIn = el('input', 'wn-input');
+    sIn.type = 'text';
+    sIn.maxLength = 60;
+    sIn.placeholder = 'Seller line on the label (optional)';
+    const tRow = el('div', 'wn-prow');
+    const pTest = el('button', 'wn-kind', 'Print test label');
+    pTest.type = 'button';
+    const pNote = el('span', 'wn-pnote', '');
+    tRow.append(pTest, pNote);
+    pBox.append(el('div', 'wn-plabel', 'Printer'), pRow, el('div', 'wn-plabel', 'Label'), lSel, el('div', 'wn-plabel', 'Seller line'), sIn, tRow);
+    for (const t of ['keydown', 'keyup', 'keypress']) dlg.addEventListener(t, (e) => e.stopPropagation());
+
+    const opt = (value, text) => Object.assign(el('option'), { value, textContent: text });
+    const fillPrinters = (names, selected) => {
+      const list = [...new Set([selected, ...names].filter(Boolean))];
+      pSel.replaceChildren(opt('', list.length ? 'Choose a printer' : 'No printers found yet'), ...list.map((n) => opt(n, n)));
+      pSel.value = selected || '';
+    };
+    const savePrinter = async (patch) => {
+      try {
+        const { settings = {} } = await chrome.storage.local.get('settings');
+        await chrome.storage.local.set({ settings: { ...settings, ...patch } });
+        checkPrinter(true);
+      } catch (_) { /* orphaned */ }
+    };
+    const findPrinters = () => {
+      pFind.disabled = true;
+      pNote.textContent = 'Looking…';
+      try {
+        chrome.runtime.sendMessage({ type: 'dymo-printers' }, (res) => {
+          void chrome.runtime.lastError;
+          pFind.disabled = false;
+          const names = (res?.printers || []).map((x) => x.name).filter(Boolean);
+          fillPrinters(names, pSel.value);
+          pNote.textContent = res?.ok ? (names.length ? `${names.length} found` : 'None found') : 'Printer service not running';
+          if (names.length === 1 && !pSel.value) { pSel.value = names[0]; savePrinter({ printerName: names[0] }); }
+        });
+      } catch (_) { pFind.disabled = false; }
+    };
+    const loadPrinterSettings = async () => {
+      try {
+        const { settings = {} } = await chrome.storage.local.get('settings');
+        fillPrinters([], settings.printerName || '');
+        sIn.value = settings.sellerName || '';
+        chrome.runtime.sendMessage({ type: 'label-catalog' }, (res) => {
+          void chrome.runtime.lastError;
+          const labels = res?.labels || [{ code: '30252', label: '30252 Address' }];
+          lSel.replaceChildren(...labels.map((l) => opt(l.code, l.label)));
+          lSel.value = settings.labelKind || '30252';
+        });
+      } catch (_) { /* orphaned */ }
+    };
+    pFind.addEventListener('click', findPrinters);
+    pSel.addEventListener('change', () => savePrinter({ printerName: pSel.value }));
+    lSel.addEventListener('change', () => savePrinter({ labelKind: lSel.value }));
+    sIn.addEventListener('change', () => savePrinter({ sellerName: sIn.value.trim() }));
+    pTest.addEventListener('click', () => {
+      pTest.disabled = true;
+      pNote.textContent = 'Printing…';
+      try {
+        chrome.runtime.sendMessage({ type: 'dymo-test-print' }, (res) => {
+          void chrome.runtime.lastError;
+          pTest.disabled = false;
+          pNote.textContent = res?.ok ? 'Sent ✓' : `Failed: ${res?.error || 'no answer'}`;
+        });
+      } catch (_) { pTest.disabled = false; }
+    });
+
+    dlg.append(dHead, pBox, auto, noPrinter, histHead, hist, more);
     dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // backdrop click
     gear.addEventListener('click', () => {
       // Stays inside the card (so the card's styles apply); showModal lifts it
       // into the top layer above the page anyway.
-      if (!dlg.open) dlg.showModal();
+      if (!dlg.open) {
+        loadPrinterSettings().then(findPrinters);
+        dlg.showModal();
+      }
     });
     card.append(dlg);
 
