@@ -321,7 +321,7 @@
     .wn-dhead { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
     .wn-dhead .wn-name { flex: 1; font-size: 15px; }
     .wn-close { border: 0; background: transparent; color: var(--wn-dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px; }
-    .wn-pbox { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--wn-line); }
+    .wn-pbox { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
     .wn-plabel { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--wn-dim); margin-top: 4px; }
     .wn-prow { display: flex; gap: 8px; align-items: center; }
     .wn-prow select { flex: 1; min-width: 0; }
@@ -634,11 +634,10 @@
     close.setAttribute('aria-label', 'Close');
     close.addEventListener('click', () => dlg.close());
     dHead.append(dLogo, dName, close);
-    const more = el('button', 'wn-more', 'All settings');
+    // Save and close (owner, 2026-10-23: "unclear what to do after making
+    // changes"). Every control already saves as it changes; this makes it explicit.
+    const more = el('button', 'wn-more wn-send', 'Save');
     more.type = 'button';
-    more.addEventListener('click', () => {
-      try { chrome.runtime.sendMessage({ type: 'open-options' }, () => void chrome.runtime.lastError); } catch (_) { /* orphaned */ }
-    });
     // Printer settings right here (owner, 2026-10-23: "so they don't have to go
     // into the extension settings"). Same storage keys as the settings page;
     // every change saves at once.
@@ -793,6 +792,14 @@
     lSel.addEventListener('change', drawPreview);
     sIn.addEventListener('input', drawPreview);
 
+    more.addEventListener('click', async () => {
+      await savePrinter({ printerName: pSel.value, labelKind: lSel.value, sellerName: sIn.value.trim(), labelFields: { ...fieldState, tagline: true } });
+      dlg.close();
+      if (cardEls) {
+        cardEls.print.dataset.ok = '1';
+        cardEls.print.textContent = 'Settings saved ✓';
+      }
+    });
     dlg.append(dHead, pBox, auto, noPrinter, lBox, histHead, hist, more);
     dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // backdrop click
     gear.addEventListener('click', () => {
