@@ -271,7 +271,46 @@ function fmtWhen(ts) {
     d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+// ---------------------------------------------------------------- beta end
+
+// The public beta has an end date (owner, 2026-10-23: "stops working in 30
+// days"; disclosed in the store listing). The date lives at
+// showrunner.tools/beta.json so it can be moved without a release; if that
+// can't be reached for a week, the built-in date below is the backstop.
+const BETA_URL = 'https://showrunner.tools/beta.json';
+const BETA_BACKSTOP = '2026-12-15T07:00:00Z';
+const BETA_FRESH_MS = 12 * 60 * 60 * 1000;
+const BETA_TRUST_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function betaStatus() {
+  // Only Chrome Web Store installs carry an update_url. Hand-installed copies
+  // (Pablo's, from GitHub) never expire (owner, 2026-10-23: "i won't shut pablo off").
+  if (!chrome.runtime.getManifest().update_url) return { ended: false, endsAt: null, store: false };
+  const { beta = null } = await chrome.storage.local.get('beta');
+  let b = beta;
+  if (!b || Date.now() - b.fetchedAt > BETA_FRESH_MS) {
+    try {
+      const r = await fetch(BETA_URL, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+      const j = await r.json();
+      if (j && typeof j.endsAt === 'string' && !Number.isNaN(Date.parse(j.endsAt))) {
+        b = { endsAt: j.endsAt, message: String(j.message || ''), url: String(j.url || 'https://showrunner.tools'), fetchedAt: Date.now() };
+        await chrome.storage.local.set({ beta: b });
+      }
+    } catch (_) { /* offline: fall back below */ }
+  }
+  const trusted = b && Date.now() - b.fetchedAt < BETA_TRUST_MS;
+  const endsAt = trusted ? b.endsAt : new Date(Math.min(Date.parse(b?.endsAt || BETA_BACKSTOP), Date.parse(BETA_BACKSTOP))).toISOString();
+  return {
+    ended: Date.now() >= Date.parse(endsAt),
+    endsAt,
+    message: b?.message || 'This Showrunner beta has ended. Update Showrunner to keep printing labels.',
+    url: b?.url || 'https://showrunner.tools',
+  };
+}
+
 async function dymoPrint(entry) {
+  const beta = await betaStatus();
+  if (beta.ended) throw new Error('beta ended: update Showrunner to keep printing');
   const { settings = {} } = await chrome.storage.local.get('settings');
   if (!settings.printerName) throw new Error('No printer chosen on the settings page');
   const { base } = await dymoPrinters();
@@ -375,6 +414,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     printForClose({ ...msg.entry, page: sender.tab?.url || msg.entry.page }, sender.tab?.id);
     sendResponse({ ok: true });
     return false;
+  }
+  if (msg?.type === 'beta-status') {
+    betaStatus().then(sendResponse, () => sendResponse({ ended: false }));
+    return true;
   }
   if (msg?.type === 'dymo-test-print') {
     const entry = { ts: Date.now(), title: 'Mainline madness #136', winner: 'whatnot_buyer', price: '$12', page: '' };

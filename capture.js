@@ -289,6 +289,9 @@
     #${CARD_ID} .wn-chev { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-right: -6px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--wn-dim); cursor: pointer; }
     #${CARD_ID} .wn-chev:hover { color: var(--wn-fg); background: rgba(128, 128, 128, 0.15); }
     #${CARD_ID}[data-folded] .wn-status { display: none; }
+    #${CARD_ID} .wn-beta { margin: 0 14px 10px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 229, 0, 0.14); font-size: 12px; line-height: 1.35; }
+    #${CARD_ID} .wn-beta[hidden] { display: none; }
+    #${CARD_ID} .wn-beta a { color: #ffe500; font-weight: 700; }
     #${CARD_ID}[data-folded] .wn-histbox { display: none; }
     #${CARD_ID} .wn-histbox { padding: 0 14px 10px; }
     #${CARD_ID} .wn-histbox .wn-hist-head { margin-top: 0; padding-top: 8px; }
@@ -633,9 +636,16 @@
     body.append(title, meta, who);
     // Sale history lives on the card itself (owner, 2026-10-23), newest first,
     // each with reprint and remove; it scrolls after a few rows.
+    const beta = el('div', 'wn-beta');
+    beta.hidden = true;
+    const betaText = el('span', null, '');
+    const betaLink = el('a', null, 'Get the update');
+    betaLink.target = '_blank';
+    betaLink.rel = 'noopener';
+    beta.append(betaText, ' ', betaLink);
     const histBox = el('div', 'wn-histbox');
     histBox.append(histHead, hist);
-    card.append(head, status, histBox, body);
+    card.append(head, beta, status, histBox, body);
 
     // The settings modal: auto-print, sale history, a link to all settings.
     const dlg = el('dialog', 'wn-dialog');
@@ -922,7 +932,7 @@
     for (const t of ['keydown', 'keyup', 'keypress']) about.addEventListener(t, (e) => e.stopPropagation());
     help.addEventListener('click', () => { if (!about.open) about.showModal(); });
     card.append(about);
-    cardEls = { state, title, meta, who, print, hist, autoInput, auto, again, noPrinter, dlg, setChev };
+    cardEls = { state, title, meta, who, print, hist, autoInput, auto, again, noPrinter, dlg, setChev, beta, betaText, betaLink };
     mountCard();
     renderHistory();
   }
@@ -1189,7 +1199,26 @@
 
   // Ask background whether printing is set up and working; the auto-print
   // switch only shows when it is (nothing to switch on otherwise).
+  // The beta's end (background.js betaStatus): once it has passed, the card
+  // says so with a link instead of printing.
+  let betaEnded = null;
+  function checkBeta() {
+    try {
+      chrome.runtime.sendMessage({ type: 'beta-status' }, (res) => {
+        void chrome.runtime.lastError;
+        betaEnded = res?.ended ? res : null;
+        if (!cardEls) return;
+        cardEls.beta.hidden = !betaEnded;
+        if (betaEnded) {
+          cardEls.betaText.textContent = betaEnded.message;
+          cardEls.betaLink.href = betaEnded.url;
+        }
+      });
+    } catch (_) { /* orphaned copy */ }
+  }
+
   function checkPrinter(force) {
+    checkBeta();
     try {
       chrome.runtime.sendMessage({ type: 'printer-status', force: !!force }, (res) => {
         void chrome.runtime.lastError;
