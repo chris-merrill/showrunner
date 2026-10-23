@@ -66,8 +66,9 @@
   // (.z-seller-live-stream-controls): title (strong.text-title2), the price
   // (div.text-[16px]) and, while the auction runs, the countdown
   // [data-testid="show-timer"] ("00:12"). When it ends unsold the timer just
-  // disappears. The sold state (winner) is not mapped yet: until it is, a
-  // "won" / "sold" line anywhere in that block counts as sold.
+  // disappears. Sold (mapped 2026-10-23, a $1 test win): the block gains a
+  // first line "<buyer> won!" and "Bids: 1", e.g.
+  // "chris_merrill__801 won! | test | test | Bids: 1 | $1".
   function readSellerPanel() {
     const controls = document.querySelector('.z-seller-live-stream-controls');
     if (!controls) return null;
@@ -85,7 +86,8 @@
     const winner = wonM ? wonM[1].trim() : '';
     const sold = !!winner || /\bsold\b/i.test(panel);
     let bids = '';
-    const bm = panel.match(/\b\d+\s+bids?\b/i);
+    // Seller page shows "Bids: 1"; the viewer page "1 bid".
+    const bm = panel.match(/\bbids?:\s*\d+|\b\d+\s+bids?\b/i);
     if (bm) bids = bm[0].trim();
     return {
       title, subtitle, bids, price, status: timer, winner, winState: winner ? 'won!' : '', panel,

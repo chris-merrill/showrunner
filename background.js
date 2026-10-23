@@ -239,7 +239,8 @@ function labelLayout(entry, settings) {
   if (f.item) lines.push({ text: itemNumber(entry.title) || '(no title)', size: 'xl', bold: true });
   if (f.price && entry.price) lines.push({ text: entry.price, size: 'l', bold: true });
   if (f.buyer && entry.winner) lines.push({ text: entry.winner, size: 'm', bold: false });
-  if (f.title && entry.title) lines.push({ text: entry.title, size: 's', bold: false });
+  // Skip the full title when it's the same text as the big line (no #number in it).
+  if (f.title && entry.title && !(f.item && itemNumber(entry.title) === entry.title.trim())) lines.push({ text: entry.title, size: 's', bold: false });
   if (f.date) lines.push({ text: fmtWhen(entry.ts), size: 's', bold: false });
   if (f.seller && settings.sellerName) lines.push({ text: settings.sellerName, size: 's', bold: false });
   if (!lines.length) lines.push({ text: itemNumber(entry.title) || '(no title)', size: 'xl', bold: true });
