@@ -245,6 +245,12 @@
       user-select: none;
     }
     #${CARD_ID} .wn-auto span { flex: 1; }
+    /* Showrunner branding: yellow edge, logo, name. */
+    #${CARD_ID} { box-shadow: inset 0 0 0 1px rgba(255, 229, 0, 0.45); border-top: 3px solid #ffe500; }
+    #${CARD_ID} .wn-logo { width: 20px; height: 20px; border-radius: 5px; flex: none; }
+    #${CARD_ID} .wn-name b { font-weight: 700; }
+    #${CARD_ID} .wn-tool { color: var(--wn-dim); font-weight: 500; margin-left: 6px; }
+    #${CARD_ID} .wn-tool::before { content: '·'; margin-right: 6px; }
     /* Compact sizing for the seller dashboard. */
     #${CARD_ID} { margin-bottom: 12px; border-radius: 12px; }
     #${CARD_ID} .wn-head { padding: 10px 14px 0; gap: 8px; }
@@ -275,7 +281,7 @@
       background: #fff;
       transition: transform 120ms ease;
     }
-    #${CARD_ID} .wn-auto input:checked + .wn-sw { background: #2f9e44; }
+    #${CARD_ID} .wn-auto input:checked + .wn-sw { background: #ffe500; }
     #${CARD_ID} .wn-auto input:checked + .wn-sw::after { transform: translateX(16px); }
     #${CARD_ID} .wn-hist-head {
       display: flex;
@@ -449,9 +455,15 @@
     card.id = CARD_ID;
     if (collapsed) card.dataset.collapsed = '';
     const head = el('div', 'wn-head');
-    const name = el('span', 'wn-name', 'Auction');
+    // Showrunner branding (owner, 2026-10-23: "hard to tell what is ours"):
+    // the extension's own yellow clapperboard icon, the name, then the tool.
+    const logo = el('img', 'wn-logo');
+    logo.alt = '';
+    try { logo.src = chrome.runtime.getURL('icons/icon-48.png'); } catch (_) { /* orphaned */ }
+    const name = el('span', 'wn-name');
+    name.append(el('b', null, 'Showrunner'), el('span', 'wn-tool', 'Labels'));
     const state = el('span', 'wn-state', '—');
-    head.append(markSvg(18), name, state);
+    head.append(logo, name, state);
     head.addEventListener('click', () => {
       collapsed = !collapsed;
       card.toggleAttribute('data-collapsed', collapsed);
