@@ -1,6 +1,6 @@
 # Showrunner: accounts and licensing (design)
 
-Date: 2026-10-23 · Owner: Chris Merrill · Status: draft for owner review · Ships as **Showrunner 2.0** (owner: "v2.x is where we will implement our licensing scheme")
+Date: 2026-10-23 · Owner: Chris Merrill · Status: approved by owner 2026-10-23 · Ships as **Showrunner 2.0** (owner: "v2.x is where we will implement our licensing scheme")
 Repo: `chris-merrill/showrunner` (`~/Projects/whatnot-chat-helper`) · Firebase project: `showrunner-tools`
 
 ## Intent
@@ -54,7 +54,7 @@ everything around it so billing drops in later.
   moderators), each signing in with their own Google account.
 - `accounts/{uid}/members/{memberUid}`: `{ email, role: 'helper', invitedAt, joinedAt }`; `members/{memberUid}` index
   `{ accountUid }` so a member's sign-in finds their team.
-- Invite: owner enters an email on /account → `POST /api/members/invite` creates `invites/{token}` (expires 7 days)
+- Invite: owner enters an email on /app → `POST /api/members/invite` creates `invites/{token}` (expires 7 days)
   → the owner shares the link `showrunner.tools/join/<token>` (no email sending this round) → the invitee signs in
   with Google and joins.
 - A member connects their own computers to the team's shop like the owner; licenses carry `uid` (the member) and
@@ -72,9 +72,10 @@ everything around it so billing drops in later.
   `hasAccess` = freeGrant, or plan 'active', or (plan 'trial' and now < trialEndsAt). Without Stripe, 'active' is
   only set by the admin.
 - Rules: the owner reads their own account; all writes go through the API (Admin SDK). Admin reads all.
-- New page `/account` (same look as the site): plan/trial card ("Trial · 5 days left", "Free (granted)", "Expired"),
+- The landing page stays as it is (it's live). The signed-in user UI lives at **`/app`** (owner, 2026-10-23), a new
+  page with the site's header, footer and theme. `/app` (same look as the site): plan/trial card ("Trial · 5 days left", "Free (granted)", "Expired"),
   Shop card (claimed shop name), Computers card (list with name/last seen, Remove), Sign out. The avatar menu gains
-  "Account". Public pages get a "Sign in" link in the header when signed out.
+  "My Showrunner" (→ /app). Public pages get a "Sign in" link in the header when signed out.
 
 ### Shops
 - `shops/{shopId}`: `{ accountUid, name, claimedAt }`. `shopId` = the Whatnot username, lower-cased
@@ -84,7 +85,7 @@ everything around it so billing drops in later.
   seller to open their show and tries again (no printing until known).
 - First connect with an empty shop list claims the current shop (transaction: refuse if `shops/{shopId}` belongs
   to another account).
-- Shop not on the account: card says "This shop isn't on your Showrunner account" with a link to /account; no
+- Shop not on the account: card says "This shop isn't on your Showrunner account" with a link to /app; no
   printing. Shop belongs to another account: "This shop is linked to another Showrunner account. Contact us."
 - Switching shops: admin only this round (release or move on /admin).
 
@@ -124,7 +125,7 @@ everything around it so billing drops in later.
 | `POST /api/devices/remove` | ID token | owner removes one of their computers |
 | `POST /api/admin/*` | ID token + admin | grant/remove Free, set trial end, release/move shop, revoke device |
 | `POST /api/feedback` | as today; plus device secret | a connected extension's report carries `uid` and shop |
-All scale-to-zero (only Connect and /account actions wait on them; nobody waits during a show).
+All scale-to-zero (only Connect and /app actions wait on them; nobody waits during a show).
 
 ### /admin additions
 Accounts tab: email, plan, trial end, shop, computers (count, last seen). Actions: Grant Free / Remove Free, extend
