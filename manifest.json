@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Showrunner",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "Seller tools for live shows: live auction status and a DYMO label printed on every sale.",
   "icons": {
     "16": "icons/icon-16.png",

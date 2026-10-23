@@ -328,6 +328,8 @@
     .wn-pnote { font-size: 12px; color: var(--wn-dim); }
     #${CARD_ID} .wn-dialog select.wn-input { appearance: auto; height: 34px; padding: 4px 8px; background: #222; color: #fff; }
     #${CARD_ID} .wn-dialog .wn-kind { white-space: nowrap; }
+    #${CARD_ID} .wn-dialog .wn-test { background: #ffe500 !important; border-color: #ffe500 !important; color: #111 !important; font-weight: 700; }
+    #${CARD_ID} .wn-dialog .wn-test:disabled { opacity: 0.6; }
     .wn-lbox { border-bottom: 0; padding-bottom: 0; }
     .wn-previewwrap { display: grid; place-items: center; padding: 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); }
     .wn-preview { display: flex; flex-direction: column; overflow: hidden; background: #fff; color: #000; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); font-family: Arial, Helvetica, sans-serif; }
@@ -653,7 +655,7 @@
     sIn.maxLength = 60;
     sIn.placeholder = 'Seller line on the label (optional)';
     const tRow = el('div', 'wn-prow');
-    const pTest = el('button', 'wn-kind', 'Print test label');
+    const pTest = el('button', 'wn-kind wn-test', 'Print test label');
     pTest.type = 'button';
     const pNote = el('span', 'wn-pnote', '');
     tRow.append(pTest, pNote);
