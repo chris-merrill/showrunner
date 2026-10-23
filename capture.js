@@ -171,7 +171,7 @@
       font: 400 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
       overflow: hidden;
     }
-    html.dark #${CARD_ID} { --wn-fg: #fff; --wn-dim: #a3a3a3; --wn-line: rgba(255, 255, 255, 0.1); --wn-bg: #171717; }
+    html.dark #${CARD_ID}, .dark #${CARD_ID} { --wn-fg: #fff; --wn-dim: #a3a3a3; --wn-line: rgba(255, 255, 255, 0.1); --wn-bg: #171717; }
     #${CARD_ID}[data-floating] {
       position: fixed;
       left: 16px;
@@ -413,8 +413,13 @@
   // as its first child; React reconciles its own children and leaves ours be.
   const SHOP_COLUMN = 'div[class*="grid-area:shop"]';
 
+  // The seller's live dashboard: a 3-column grid (products | video | stats+chat).
+  // Our card goes at the top of the left (products) column, so it never covers
+  // the seller's own controls (owner, 2026-10-23: it hid the Add button).
+  const SELLER_LEFT = 'div[class*="grid-cols-[375px_1fr"] > div:first-child > section';
+
   function mountCard() {
-    const col = document.querySelector(SHOP_COLUMN);
+    const col = document.querySelector(SELLER_LEFT) || document.querySelector(SHOP_COLUMN);
     if (col) {
       card.removeAttribute('data-floating');
       if (card.parentElement !== col || col.firstElementChild !== card) col.prepend(card);
@@ -428,7 +433,7 @@
     injectStyle();
     if (card && document.contains(card)) {
       // Column appeared after we fell back to floating? Move in.
-      if (card.hasAttribute('data-floating') && document.querySelector(SHOP_COLUMN)) mountCard();
+      if (card.hasAttribute('data-floating') && (document.querySelector(SELLER_LEFT) || document.querySelector(SHOP_COLUMN))) mountCard();
       return;
     }
     if (card) { mountCard(); return; } // same card, re-attached after a re-render
