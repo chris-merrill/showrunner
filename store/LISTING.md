@@ -1,6 +1,6 @@
-# Chrome Web Store submission: Showrunner 1.7.1
+# Chrome Web Store submission: Showrunner 1.7.2
 
-Upload: `store/Showrunner-1.7.1-chrome-web-store.zip`
+Upload: `store/Showrunner-1.7.2-chrome-web-store.zip`
 
 ## Store listing tab
 
