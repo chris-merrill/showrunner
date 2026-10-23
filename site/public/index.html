@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Showrunner · The back office for your live shows</title>
+<meta name="description" content="Showrunner gives live sellers tools for the work behind the show: labels that print as items sell, a queue of every viewer question, and more on the way.">
+<meta name="theme-color" content="#0f0e14">
+<link rel="icon" href="/icons/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icons/icon-128.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta property="og:title" content="Showrunner">
+<meta property="og:description" content="The back office for your live shows.">
+<meta property="og:image" content="https://showrunner.tools/icons/icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0e14; --raised:#17161f; --line:#2a2837; --ink:#f2f0f7; --mute:#9b96b3;
+  --yellow:#ffe500; --yellow-ink:#111;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Inter,system-ui,-apple-system,sans-serif;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+nav{display:flex;align-items:center;justify-content:space-between;height:68px;border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:10px;font:700 19px 'Space Grotesk',sans-serif;text-decoration:none}
+.logo img{width:28px;height:28px;border-radius:7px}
+nav .links a{color:var(--mute);text-decoration:none;font-size:15px;margin-left:24px}
+nav .links a:hover{color:var(--ink)}
+.hero{padding-top:88px;padding-bottom:64px}
+.badge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-size:13px;color:var(--mute)}
+.live{width:8px;height:8px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 #ff3b3088;animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px #ff3b3000}100%{box-shadow:0 0 0 0 #ff3b3000}}
+@media (prefers-reduced-motion:reduce){.live{animation:none}}
+h1{font:700 clamp(42px,7vw,76px)/1.0 'Space Grotesk',sans-serif;letter-spacing:-.025em;margin:22px 0 20px;max-width:820px}
+h1 mark{background:none;color:var(--yellow)}
+.lede{font-size:clamp(17px,2vw,20px);color:var(--mute);max-width:600px;margin:0}
+.ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border-radius:10px;font:600 15px Inter,sans-serif;text-decoration:none;border:1px solid transparent}
+.btn.primary{background:var(--yellow);color:var(--yellow-ink)}
+.btn.ghost{border-color:var(--line);color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.fine{font-size:13px;color:var(--mute);margin-top:14px}
+section{padding-top:64px;padding-bottom:64px;border-top:1px solid var(--line)}
+.kicker{font:600 12px Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin:0 0 10px}
+h2{font:700 clamp(28px,4vw,40px)/1.1 'Space Grotesk',sans-serif;letter-spacing:-.015em;margin:0 0 28px;max-width:640px}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tool{background:var(--bg);padding:26px 22px;min-height:190px}
+.tool .n{font:500 12px 'Space Grotesk',sans-serif;color:var(--mute)}
+.tool h3{font:700 20px 'Space Grotesk',sans-serif;margin:12px 0 8px}
+.tool p{color:var(--mute);font-size:14.5px;margin:0}
+.tool.soon h3,.tool.soon p{opacity:.5}
+.soon .n{color:var(--yellow)}
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.how b{display:block;font:700 17px 'Space Grotesk',sans-serif;margin-bottom:6px}
+.how p{color:var(--mute);margin:0;font-size:15px}
+.step{font:700 14px 'Space Grotesk',sans-serif;color:var(--yellow);display:block;margin-bottom:10px}
+.prices{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.price{border:1px solid var(--line);border-radius:14px;padding:24px;background:var(--raised)}
+.price.best{border-color:var(--yellow)}
+.price .amt{font:700 40px 'Space Grotesk',sans-serif}
+.price .per{color:var(--mute);font-size:15px}
+.price p{color:var(--mute);font-size:14px;margin:10px 0 0}
+.price .tag{font:600 11px Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--yellow)}
+footer{border-top:1px solid var(--line);padding:32px 0 48px;color:var(--mute);font-size:13px}
+footer .row{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between}
+footer a{color:var(--mute)}
+@media (max-width:900px){.tools{grid-template-columns:repeat(2,1fr)}.prices,.how{grid-template-columns:1fr}}
+@media (max-width:600px){
+  .wrap{padding:0 16px} nav .links a:not(:last-child){display:none}
+  .hero{padding-top:56px;padding-bottom:44px} .tool{min-height:0} section{padding-top:48px;padding-bottom:48px}
+}
+</style>
+</head>
+<body>
+<header class="wrap">
+  <nav>
+    <a class="logo" href="/"><img src="/icons/icon-128.png" alt="">Showrunner</a>
+    <div class="links"><a href="#tools">Tools</a><a href="#pricing">Pricing</a></div>
+  </nav>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <span class="badge"><span class="live"></span>Built with live sellers, for live sellers</span>
+    <h1>The back office for your <mark>live shows.</mark></h1>
+    <p class="lede">You run the show. Showrunner handles what happens behind it: labels that print the moment an item sells, every viewer question in one place, and more tools on the way.</p>
+    <div class="ctas">
+      <a class="btn primary" href="#pricing">Launching soon</a>
+      <a class="btn ghost" href="#tools">See the tools</a>
+    </div>
+    <p class="fine">7 days free when we launch. Then $10 a month.</p>
+  </div>
+
+  <section id="tools">
+    <div class="wrap">
+      <p class="kicker">The tools</p>
+      <h2>Small tools that keep a busy show running smoothly.</h2>
+      <div class="tools">
+        <div class="tool"><span class="n">TOOL 01</span><h3>Auto Labels</h3><p>A label prints the moment an auction closes: the item, the buyer, the price. Reprint any of them in one click.</p></div>
+        <div class="tool"><span class="n">TOOL 02</span><h3>Question Queue</h3><p>Viewer questions pulled out of a fast chat into one list, with how long each has waited. Tick them off as you answer.</p></div>
+        <div class="tool soon"><span class="n">COMING</span><h3>Run Sheet</h3><p>Plan the lineup before you go live, and know what is up next.</p></div>
+        <div class="tool soon"><span class="n">COMING</span><h3>Wrap-up</h3><p>Pick lists per buyer and the totals after the show.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="kicker">How it works</p>
+      <h2>Nothing new to learn mid&#8209;show.</h2>
+      <div class="how">
+        <div><span class="step">01</span><b>Add it to Chrome</b><p>Showrunner sits on top of the page you already sell from.</p></div>
+        <div><span class="step">02</span><b>Plug in your label printer</b><p>DYMO LabelWriter today, with more printers to come.</p></div>
+        <div><span class="step">03</span><b>Go live</b><p>Labels print as items sell. Questions line up as they come in.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="wrap">
+      <p class="kicker">Pricing</p>
+      <h2>Every tool, one price.</h2>
+      <div class="prices">
+        <div class="price"><span class="amt">$10</span> <span class="per">/ month</span><p>All tools. Cancel anytime.</p></div>
+        <div class="price best"><span class="tag">Best value</span><br><span class="amt">$100</span> <span class="per">/ year</span><p>Two months free.</p></div>
+        <div class="price"><span class="amt">+$5</span> <span class="per">/ month</span><p>AI add-on: catches the questions and requests that don't end in a question mark. $50 a year. 7 days free.</p></div>
+      </div>
+      <p class="fine">Every account starts with a 7-day free trial.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span>Showrunner is a <a href="https://core-commerce.io">Core Commerce</a> product.</span>
+    <span>Not affiliated with or endorsed by any live-selling platform.</span>
+    <span>© 2026 Core Commerce LLC</span>
+  </div>
+</footer>
+</body>
+</html>
