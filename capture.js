@@ -89,8 +89,16 @@
     return { title, subtitle, bids, price, status, winner, winState, panel, sold, running, waiting };
   }
 
+  // The card belongs on a live show only (owner, 2026-10-23: it showed on the
+  // home page and the login page). A show is a /live/ URL, or any page that has
+  // a show's Shop column.
+  function onShowPage() {
+    return /\/live\//.test(location.pathname) || !!document.querySelector(SHOP_COLUMN);
+  }
+
   function tick() {
     if (!enabled || !document.body) return;
+    if (!onShowPage()) { removeCard(); return; }
     try {
       const r = readFooter();
       renderCard(r);
@@ -720,7 +728,7 @@
     enabled = on;
     renderToggle();
     if (on) {
-      ensureCard();
+      if (onShowPage()) ensureCard();
       startup = true;
       checkPrinter(true);
       loadHistory().finally(() => { send('start', 'capture started'); tick(); });
