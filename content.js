@@ -259,6 +259,13 @@
       #${QCARD_ID} .wch-qlist li[data-resolved] { color: var(--wch-dim); }
       #${QCARD_ID} .wch-qlist li[data-resolved] .wch-qtext { text-decoration: line-through; }
       #${QCARD_ID} .wch-qbody { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+      /* Compact sizing for the seller dashboard (owner, 2026-10-23). */
+      #${QCARD_ID} { border-radius: 12px; }
+      #${QCARD_ID} .wch-qhead { padding: 10px 14px; gap: 8px; }
+      #${QCARD_ID} .wch-qname { font-size: 14px; }
+      #${QCARD_ID} .wch-qlist { max-height: 150px; padding: 0 14px 6px; font-size: 13px; }
+      #${QCARD_ID} .wch-qlist li { padding: 6px 0; }
+      #${QCARD_ID} .wch-qempty { display: none !important; }
       #${QCARD_ID} .wch-quser { display: block; font-size: 12px; color: var(--wch-dim); }
       #${QCARD_ID} .wch-qtext { font-weight: 500; }
       #${QCARD_ID} .wch-qdone {

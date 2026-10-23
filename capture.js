@@ -42,7 +42,9 @@
   let lastStatus = '';
   let closedKey = '';           // title|price|winner of the close already reported
   let history = [];             // closes, newest last: {ts, title, price, winner, bids}
-  let collapsed = false;
+  // Compact by default (owner, 2026-10-23: "taking over too much real estate"):
+  // one header line plus the auto-print switch; click the header for details.
+  let collapsed = true;
   const recentCloses = new Map(); // title|price|winner -> ts of the close we reported
   const DUP_WINDOW_MS = 5 * 60 * 1000;
   const timers = [];              // every setInterval, so an orphaned copy can stop itself
@@ -243,6 +245,16 @@
       user-select: none;
     }
     #${CARD_ID} .wn-auto span { flex: 1; }
+    /* Compact sizing for the seller dashboard. */
+    #${CARD_ID} { margin-bottom: 12px; border-radius: 12px; }
+    #${CARD_ID} .wn-head { padding: 10px 14px 0; gap: 8px; }
+    #${CARD_ID} .wn-name { font-size: 14px; }
+    #${CARD_ID} .wn-body { padding: 6px 14px 10px; }
+    #${CARD_ID}[data-collapsed] .wn-body { display: block; padding-top: 0; }
+    #${CARD_ID}[data-collapsed] .wn-head { padding-bottom: 6px; }
+    #${CARD_ID}[data-collapsed] :is(.wn-title, .wn-meta, .wn-who, .wn-print, .wn-hist-head, .wn-hist) { display: none; }
+    #${CARD_ID}[data-collapsed] .wn-auto { margin-top: 2px; padding-top: 6px; }
+    #${CARD_ID}[data-collapsed] .wn-again { margin-top: 6px; padding: 6px 10px; }
     #${CARD_ID} .wn-auto input { position: absolute; opacity: 0; pointer-events: none; }
     #${CARD_ID} .wn-sw {
       display: block;

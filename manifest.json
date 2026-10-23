@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Showrunner",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Seller tools for Whatnot live shows: question tracking, live auction status and DYMO label printing on every sale.",
   "icons": {
     "16": "icons/icon-16.png",
