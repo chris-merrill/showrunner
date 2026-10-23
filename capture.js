@@ -251,7 +251,7 @@
     #${CARD_ID} :is(.wn-title, .wn-meta, .wn-who) { display: none; }
     #${CARD_ID} .wn-body:not(:has(.wn-print:not(:empty), .wn-again:not([style*="none"]))) { display: none; }
     #${CARD_ID} .wn-head { cursor: default; padding-bottom: 10px; }
-    #${CARD_ID} .wn-chev { flex: none; width: 28px; height: 28px; margin-right: -8px; border: 0; border-radius: 999px; background: transparent; color: var(--wn-dim); font-size: 20px; line-height: 1; cursor: pointer; }
+    #${CARD_ID} .wn-chev { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-right: -6px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--wn-dim); cursor: pointer; }
     #${CARD_ID} .wn-chev:hover { color: var(--wn-fg); background: rgba(128, 128, 128, 0.15); }
     #${CARD_ID}[data-folded] .wn-status { display: none; }
     #${CARD_ID}[data-folded] .wn-head { padding-bottom: 10px; }
@@ -278,8 +278,9 @@
     .wn-input { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid var(--wn-line); border-radius: 10px; background: rgba(255, 255, 255, 0.04); color: var(--wn-fg); font: inherit; font-size: 13px; resize: vertical; }
     .wn-input:focus { outline: 2px solid #ffe500; outline-offset: 0; }
     .wn-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--wn-dim); cursor: pointer; }
-    .wn-send { margin-top: 2px; background: #ffe500; border-color: #ffe500; color: #111; }
-    .wn-send:hover { background: #ffe500; filter: brightness(0.95); }
+    #${CARD_ID} .wn-dialog .wn-send { margin-top: 2px; display: block !important; width: 100% !important; padding: 10px 12px !important; text-align: center !important; background: #ffe500 !important; border: 0 !important; border-radius: 999px !important; color: #111 !important; font: 700 14px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif !important; }
+    #${CARD_ID} .wn-dialog .wn-send:hover { filter: brightness(0.95); }
+    #${CARD_ID} .wn-dialog .wn-more { text-align: center !important; }
     .wn-send:disabled { opacity: 0.6; cursor: default; }
     .wn-sent { font-size: 12px; min-height: 16px; }
     .wn-sent[data-ok="1"] { color: #3ddc97; }
@@ -511,7 +512,8 @@
     chev.type = 'button';
     const setChev = () => {
       card.toggleAttribute('data-folded', folded);
-      chev.textContent = folded ? '›' : '⌄';
+      // Drawn chevrons, same weight as the gear (the › / ⌄ glyphs sat off-centre).
+      chev.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="${folded ? 'M9 6l6 6-6 6' : 'M6 9l6 6 6-6'}"/></svg>`;
       chev.title = folded ? 'Show details' : 'Hide details';
       chev.setAttribute('aria-expanded', String(!folded));
     };
@@ -642,7 +644,11 @@
     const emailBox = el('input', 'wn-input');
     emailBox.type = 'email';
     emailBox.maxLength = 200;
-    emailBox.placeholder = 'Email, if you would like a reply (optional)';
+    emailBox.placeholder = 'Your email, so we can reply';
+    emailBox.required = true; // owner, 2026-10-23
+    emailBox.autocomplete = 'email';
+    // Typed once, remembered on this computer only (never read from the page).
+    try { chrome.storage.local.get('feedbackEmail').then((r) => { if (r.feedbackEmail && !emailBox.value) emailBox.value = r.feedbackEmail; }); } catch (_) { /* orphaned */ }
     const diagRow = el('label', 'wn-check');
     const diagBox = el('input');
     diagBox.type = 'checkbox';
@@ -655,13 +661,15 @@
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const message = msgBox.value.trim();
-      if (!message) return;
+      const email = emailBox.value.trim();
+      if (!message || !emailBox.checkValidity()) { form.reportValidity(); return; }
+      try { chrome.storage.local.set({ feedbackEmail: email }); } catch (_) { /* orphaned */ }
       send.disabled = true;
       send.textContent = 'Sending…';
       sent.textContent = '';
       try {
         chrome.runtime.sendMessage({
-          type: 'feedback', kind, message, email: emailBox.value.trim(),
+          type: 'feedback', kind, message, email,
           includeDiagnostics: diagBox.checked, page: onShowPage() ? 'seller-live' : 'other',
         }, (res) => {
           void chrome.runtime.lastError;

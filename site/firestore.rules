@@ -12,7 +12,9 @@ service cloud.firestore {
                     && request.resource.data.message is string
                     && request.resource.data.message.size() > 0
                     && request.resource.data.message.size() <= 5000
-                    && (!('email' in request.resource.data) || (request.resource.data.email is string && request.resource.data.email.size() <= 200))
+                    && request.resource.data.email is string
+                    && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+                    && request.resource.data.email.size() <= 200
                     && request.resource.data.version is string && request.resource.data.version.size() <= 20
                     && (!('page' in request.resource.data) || (request.resource.data.page is string && request.resource.data.page.size() <= 40))
                     && (!('diagnostics' in request.resource.data) || (request.resource.data.diagnostics is string && request.resource.data.diagnostics.size() <= 20000));
