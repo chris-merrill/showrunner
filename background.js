@@ -325,6 +325,10 @@ async function printForClose(entry, tabId) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === 'feedback') {
+    sendFeedback(msg).then(sendResponse, (err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
   if (msg?.type === 'open-options') {
     chrome.runtime.openOptionsPage();
     sendResponse({ ok: true });
@@ -401,3 +405,37 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   return false;
 });
+
+// ------------------------------------------------------------------ feedback
+
+// Feedback, bug reports and feature requests go to Showrunner's own database
+// (Firebase project showrunner-tools, collection `feedback`). Its rules allow
+// adding one well-formed report and nothing else: no client can read them back.
+const FEEDBACK_URL =
+  'https://firestore.googleapis.com/v1/projects/showrunner-tools/databases/(default)/documents/feedback';
+
+async function sendFeedback({ kind, message, email, includeDiagnostics, page }) {
+  const fields = {
+    type: { stringValue: ['bug', 'feature', 'feedback'].includes(kind) ? kind : 'feedback' },
+    message: { stringValue: String(message || '').slice(0, 5000) },
+    version: { stringValue: chrome.runtime.getManifest().version },
+    page: { stringValue: String(page || '').slice(0, 40) },
+  };
+  if (email) fields.email = { stringValue: String(email).slice(0, 200) };
+  if (includeDiagnostics) {
+    const { settings = {}, capture = [] } = await chrome.storage.local.get(['settings', 'capture']);
+    const diag = {
+      userAgent: navigator.userAgent,
+      printer: { name: settings.printerName || null, label: settings.labelKind || null, autoPrint: !!settings.printOnClose },
+      recent: capture.slice(-15),
+    };
+    fields.diagnostics = { stringValue: JSON.stringify(diag).slice(0, 20000) };
+  }
+  const r = await fetch(FEEDBACK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return { ok: true };
+}

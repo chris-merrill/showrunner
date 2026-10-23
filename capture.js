@@ -256,6 +256,23 @@
     #${CARD_ID}[data-folded] .wn-body { display: none; }
     .wn-dialog { width: 360px; max-width: calc(100vw - 32px); max-height: 80vh; overflow: auto; padding: 16px 18px; border: 0; border-top: 3px solid #ffe500; border-radius: 14px; background: #171717; color: #fff; font: 400 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; --wn-fg: #fff; --wn-dim: #a3a3a3; --wn-line: rgba(255,255,255,0.1); }
     .wn-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+    #${CARD_ID} .wn-help { font: 700 14px/1 system-ui, sans-serif; }
+    .wn-blurb { margin: 8px 0 4px; color: var(--wn-dim); font-size: 13px; }
+    .wn-links { margin: 0 0 12px; font-size: 12px; color: var(--wn-dim); }
+    .wn-links a { color: #ffe500; }
+    .wn-form { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--wn-line); }
+    .wn-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+    .wn-kind { padding: 5px 10px; border: 1px solid var(--wn-line); border-radius: 999px; background: transparent; color: var(--wn-fg); font: inherit; font-size: 12px; cursor: pointer; }
+    .wn-kind[data-on] { background: #ffe500; border-color: #ffe500; color: #111; font-weight: 600; }
+    .wn-input { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid var(--wn-line); border-radius: 10px; background: rgba(255, 255, 255, 0.04); color: var(--wn-fg); font: inherit; font-size: 13px; resize: vertical; }
+    .wn-input:focus { outline: 2px solid #ffe500; outline-offset: 0; }
+    .wn-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--wn-dim); cursor: pointer; }
+    .wn-send { margin-top: 2px; background: #ffe500; border-color: #ffe500; color: #111; }
+    .wn-send:hover { background: #ffe500; filter: brightness(0.95); }
+    .wn-send:disabled { opacity: 0.6; cursor: default; }
+    .wn-sent { font-size: 12px; min-height: 16px; }
+    .wn-sent[data-ok="1"] { color: #3ddc97; }
+    .wn-sent[data-ok="0"] { color: #ff8787; }
     .wn-dhead { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
     .wn-dhead .wn-name { flex: 1; font-size: 15px; }
     .wn-close { border: 0; background: transparent; color: var(--wn-dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 0 4px; }
@@ -493,7 +510,13 @@
       try { chrome.storage.local.set({ cardFolded: folded }); } catch (_) { /* orphaned */ }
     });
     setChev();
-    head.append(logo, name, state, gear, chev);
+    // About + feedback (owner, 2026-10-23): a (?) in the header opens what
+    // Showrunner is and a form for bugs, feature requests and feedback.
+    const help = el('button', 'wn-gear wn-help', '?');
+    help.type = 'button';
+    help.title = 'About Showrunner, report a bug, request a feature';
+    help.setAttribute('aria-label', help.title);
+    head.append(logo, name, state, help, gear, chev);
     const body = el('div', 'wn-body');
     const title = el('div', 'wn-title', '');
     const meta = el('div', 'wn-meta', '');
@@ -561,6 +584,96 @@
       if (!dlg.open) dlg.showModal();
     });
     card.append(dlg);
+
+    const about = el('dialog', 'wn-dialog');
+    const aHead = el('div', 'wn-dhead');
+    const aName = el('span', 'wn-name');
+    aName.append(el('b', null, 'Showrunner'), el('span', 'wn-tool', 'Public beta'));
+    const aClose = el('button', 'wn-close', '×');
+    aClose.type = 'button';
+    aClose.setAttribute('aria-label', 'Close');
+    aClose.addEventListener('click', () => about.close());
+    aHead.append(logo.cloneNode(), aName, aClose);
+    let ver = '';
+    try { ver = chrome.runtime.getManifest().version; } catch (_) { /* orphaned */ }
+    const blurb = el('p', 'wn-blurb', 'The back office for your live shows. A label prints the moment an auction closes. Free during the beta: tell us what breaks and what you would like next.');
+    const links = el('p', 'wn-links');
+    const site = el('a', null, 'showrunner.tools');
+    site.href = 'https://showrunner.tools';
+    site.target = '_blank';
+    site.rel = 'noopener';
+    links.append(site, el('span', null, ` · version ${ver}`));
+
+    const form = el('form', 'wn-form');
+    const kinds = el('div', 'wn-kinds');
+    let kind = 'bug';
+    for (const [k, label] of [['bug', 'Report a bug'], ['feature', 'Request a feature'], ['feedback', 'Feedback']]) {
+      const b = el('button', 'wn-kind', label);
+      b.type = 'button';
+      b.dataset.kind = k;
+      if (k === kind) b.dataset.on = '';
+      b.addEventListener('click', () => {
+        kind = k;
+        for (const x of kinds.children) x.toggleAttribute('data-on', x === b);
+        msgBox.placeholder = k === 'bug' ? 'What happened, and what did you expect?' : k === 'feature' ? 'What would make your shows easier?' : 'Tell us anything.';
+      });
+      kinds.append(b);
+    }
+    const msgBox = el('textarea', 'wn-input');
+    msgBox.rows = 4;
+    msgBox.maxLength = 5000;
+    msgBox.required = true;
+    msgBox.placeholder = 'What happened, and what did you expect?';
+    const emailBox = el('input', 'wn-input');
+    emailBox.type = 'email';
+    emailBox.maxLength = 200;
+    emailBox.placeholder = 'Email, if you would like a reply (optional)';
+    const diagRow = el('label', 'wn-check');
+    const diagBox = el('input');
+    diagBox.type = 'checkbox';
+    diagBox.checked = true;
+    diagRow.append(diagBox, el('span', null, 'Include printer settings and the last few sales, to help us fix it'));
+    const send = el('button', 'wn-more wn-send', 'Send');
+    send.type = 'submit';
+    const sent = el('div', 'wn-sent');
+    form.append(kinds, msgBox, emailBox, diagRow, send, sent);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const message = msgBox.value.trim();
+      if (!message) return;
+      send.disabled = true;
+      send.textContent = 'Sending…';
+      sent.textContent = '';
+      try {
+        chrome.runtime.sendMessage({
+          type: 'feedback', kind, message, email: emailBox.value.trim(),
+          includeDiagnostics: diagBox.checked, page: onShowPage() ? 'seller-live' : 'other',
+        }, (res) => {
+          void chrome.runtime.lastError;
+          send.disabled = false;
+          send.textContent = 'Send';
+          if (res?.ok) {
+            msgBox.value = '';
+            sent.dataset.ok = '1';
+            sent.textContent = 'Thanks, it’s on its way to us.';
+          } else {
+            sent.dataset.ok = '0';
+            sent.textContent = 'Couldn’t send. Check your connection and try again.';
+          }
+        });
+      } catch (_) {
+        send.disabled = false;
+        send.textContent = 'Send';
+        sent.dataset.ok = '0';
+        sent.textContent = 'Showrunner was updated. Refresh this page, then try again.';
+      }
+    });
+    about.append(aHead, blurb, links, form);
+    about.addEventListener('click', (e) => { if (e.target === about) about.close(); });
+    // Keep typing inside our form away from the page's own keyboard shortcuts.
+    for (const t of ['keydown', 'keyup', 'keypress']) about.addEventListener(t, (e) => e.stopPropagation());
+    help.addEventListener('click', () => { if (!about.open) about.showModal(); });
+    card.append(about);
     cardEls = { state, title, meta, who, print, hist, autoInput, auto, again, noPrinter, dlg, setChev };
     mountCard();
     renderHistory();
