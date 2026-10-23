@@ -69,6 +69,18 @@ h2{font:700 clamp(28px,4vw,40px)/1.1 'Space Grotesk',sans-serif;letter-spacing:-
 footer{border-top:1px solid var(--line);padding:32px 0 48px;color:var(--mute);font-size:13px}
 footer .row{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between}
 footer a{color:var(--mute)}
+nav .links{display:flex;align-items:center}
+.acct{position:relative;margin-left:20px}
+.acct:empty{display:none}
+.av{width:36px;height:36px;border-radius:50%;border:2px solid var(--line);background:#2a2837 center/cover no-repeat;color:var(--ink);font:600 15px Inter,sans-serif;cursor:pointer;display:grid;place-items:center;padding:0}
+.av:hover,.av[aria-expanded="true"]{border-color:var(--yellow)}
+.menu{position:absolute;right:0;top:46px;min-width:230px;background:var(--raised);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 18px 40px #0009;z-index:10}
+.menu[hidden]{display:none}
+.menu .me{padding:10px 10px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.menu .me b{display:block;font-size:14px}.menu .me span{font-size:12px;color:var(--mute)}
+.menu a,.menu button{display:block;width:100%;text-align:left;padding:9px 10px;border:0;border-radius:8px;background:none;color:var(--ink);font:500 14px Inter,sans-serif;text-decoration:none;cursor:pointer;margin:0}
+.menu a:hover,.menu button:hover{background:#ffffff10}
+nav .links .menu a{margin-left:0;color:var(--ink)}
 @media (max-width:900px){.tools{grid-template-columns:repeat(2,1fr)}.prices,.how{grid-template-columns:1fr}}
 @media (max-width:600px){
   .wrap{padding:0 16px} nav .links a:not(:last-child){display:none}
@@ -80,7 +92,7 @@ footer a{color:var(--mute)}
 <header class="wrap">
   <nav>
     <a class="logo" href="/"><img src="/icons/icon-128.png" alt="">Showrunner</a>
-    <div class="links"><a href="#tools">Tools</a><a href="#pricing">Pricing</a></div>
+    <div class="links"><a href="#tools">Tools</a><a href="#pricing">Pricing</a><span id="acct" class="acct"></span></div>
   </nav>
 </header>
 
@@ -141,5 +153,55 @@ footer a{color:var(--mute)}
     <span>© 2026 Core Commerce LLC</span>
   </div>
 </footer>
+<script type="module">
+// Signed-in visitors see their avatar and a small menu (Admin for the admin).
+// Remembered locally so it shows instantly; confirmed in the background.
+const KEY = 'sr-me';
+const $acct = document.getElementById('acct');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let auth = null;
+
+function draw(me) {
+  if (!me) { $acct.innerHTML = ''; return; }
+  const initial = esc((me.name || me.email || '?').trim()[0].toUpperCase());
+  const pic = me.photo ? ` style="background-image:url('${esc(me.photo)}')"` : '';
+  $acct.innerHTML = `<button class="av" id="avb" aria-haspopup="menu" aria-expanded="false" title="${esc(me.email)}"${pic}>${me.photo ? '' : initial}</button>
+    <div class="menu" id="mnu" role="menu" hidden>
+      <div class="me"><b>${esc(me.name || 'Signed in')}</b><span>${esc(me.email)}</span></div>
+      ${me.admin ? '<a href="/admin" role="menuitem">Admin</a>' : ''}
+      <button type="button" id="so" role="menuitem">Sign out</button>
+    </div>`;
+  const btn = document.getElementById('avb'), menu = document.getElementById('mnu');
+  btn.onclick = (e) => { e.stopPropagation(); const open = menu.hidden; menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
+  document.addEventListener('click', () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); } });
+  document.getElementById('so').onclick = async () => {
+    try { localStorage.removeItem(KEY); } catch (_) {}
+    draw(null);
+    if (auth) { const { signOut } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'); signOut(auth); }
+  };
+}
+
+try { draw(JSON.parse(localStorage.getItem(KEY) || 'null')); } catch (_) {}
+
+(async () => {
+  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+  const app = initializeApp({ apiKey: 'AIzaSyAw9JMZsAq6Skd1gUHqKjcS7yQWpJGnFz4', authDomain: 'showrunner-tools.firebaseapp.com', projectId: 'showrunner-tools', appId: '1:475370655942:web:5f85f28ac490488c4fc7c7' });
+  auth = getAuth(app);
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { try { localStorage.removeItem(KEY); } catch (_) {} draw(null); return; }
+    let admin = false;
+    try {
+      const t = await user.getIdToken();
+      const r = await fetch(`https://firestore.googleapis.com/v1/projects/showrunner-tools/databases/(default)/documents/admins/${user.uid}`, { headers: { Authorization: `Bearer ${t}` } });
+      admin = r.ok;
+    } catch (_) {}
+    const me = { name: user.displayName, email: user.email, photo: user.photoURL, admin };
+    try { localStorage.setItem(KEY, JSON.stringify(me)); } catch (_) {}
+    draw(me);
+  });
+})();
+</script>
 </body>
 </html>
