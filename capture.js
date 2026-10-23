@@ -253,7 +253,15 @@
     #${CARD_ID} .wn-head { cursor: default; padding-bottom: 10px; }
     #${CARD_ID} .wn-chev { flex: none; width: 28px; height: 28px; margin-right: -8px; border: 0; border-radius: 999px; background: transparent; color: var(--wn-dim); font-size: 20px; line-height: 1; cursor: pointer; }
     #${CARD_ID} .wn-chev:hover { color: var(--wn-fg); background: rgba(128, 128, 128, 0.15); }
-    #${CARD_ID}[data-folded] .wn-body { display: none; }
+    #${CARD_ID}[data-folded] .wn-status { display: none; }
+    #${CARD_ID}[data-folded] .wn-head { padding-bottom: 10px; }
+    #${CARD_ID} .wn-body { display: none !important; }
+    #${CARD_ID} .wn-head { padding-bottom: 4px; }
+    #${CARD_ID} .wn-status { display: flex; align-items: center; gap: 8px; padding: 0 14px 10px; min-height: 26px; }
+    #${CARD_ID} .wn-status .wn-state { white-space: nowrap; }
+    #${CARD_ID} .wn-status .wn-state[data-state="none"], #${CARD_ID} .wn-status .wn-state[data-state="idle"] { background: transparent; padding-left: 0; color: var(--wn-dim); font-weight: 500; }
+    #${CARD_ID} .wn-status .wn-print { flex: 1; min-width: 0; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #${CARD_ID} .wn-status .wn-again { width: auto; margin: 0 0 0 auto; padding: 4px 10px; font-size: 12px; flex: none; }
     .wn-dialog { width: 360px; max-width: calc(100vw - 32px); max-height: 80vh; overflow: auto; padding: 16px 18px; border: 0; border-top: 3px solid #ffe500; border-radius: 14px; background: #171717; color: #fff; font: 400 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; --wn-fg: #fff; --wn-dim: #a3a3a3; --wn-line: rgba(255,255,255,0.1); }
     .wn-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
     #${CARD_ID} .wn-help { font: 700 14px/1 system-ui, sans-serif; }
@@ -485,7 +493,7 @@
     logo.alt = '';
     try { logo.src = chrome.runtime.getURL('icons/icon-48.png'); } catch (_) { /* orphaned */ }
     const name = el('span', 'wn-name');
-    name.append(el('b', null, 'Showrunner'), el('span', 'wn-tool', 'Labels'));
+    name.append(el('b', null, 'Showrunner'));
     const state = el('span', 'wn-state', '—');
     // Settings live behind a gear (owner, 2026-10-23: "be thoughtful about our
     // presence on the screen"); the card itself is just status + Reprint last.
@@ -516,7 +524,9 @@
     help.type = 'button';
     help.title = 'About Showrunner, report a bug, request a feature';
     help.setAttribute('aria-label', help.title);
-    head.append(logo, name, state, help, gear, chev);
+    // Two rows (owner, 2026-10-23: "too cluttered… primary and secondary row"):
+    // brand + icons on top, the live status and Reprint last underneath.
+    head.append(logo, name, help, gear, chev);
     const body = el('div', 'wn-body');
     const title = el('div', 'wn-title', '');
     const meta = el('div', 'wn-meta', '');
@@ -556,8 +566,10 @@
     clearAll.addEventListener('click', () => removeCloses());
     histHead.append(el('span', null, 'History'), clearAll);
     const hist = el('ul', 'wn-hist');
-    body.append(title, meta, who, print, again);
-    card.append(head, body);
+    const status = el('div', 'wn-status');
+    status.append(state, print, again);
+    body.append(title, meta, who);
+    card.append(head, status, body);
 
     // The settings modal: auto-print, sale history, a link to all settings.
     const dlg = el('dialog', 'wn-dialog');
@@ -714,7 +726,7 @@
     ensureCard();
     const { state, title, meta, who } = cardEls;
     let s = 'none';
-    let label = 'no player';
+    let label = 'Waiting for an auction';
     let titleText = 'No live player on this page';
     let metaText = '';
     let whoText = '';
@@ -824,7 +836,7 @@
     if (!cardEls) return;
     const last = history[history.length - 1];
     cardEls.again.style.display = printerReady && last ? '' : 'none';
-    const text = last ? `Reprint last label · ${last.title}` : 'Reprint last label';
+    const text = 'Reprint last';
     if (cardEls.again.textContent !== text) cardEls.again.textContent = text;
     cardEls.again.title = last ? `Print the label for ${last.title} again` : '';
   }
