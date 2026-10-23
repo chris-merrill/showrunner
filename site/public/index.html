@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Showrunner · The back office for your live shows</title>
-<meta name="description" content="Showrunner gives live sellers tools for the work behind the show: labels that print as items sell, a queue of every viewer question, and more on the way.">
+<meta name="description" content="Showrunner gives live sellers tools for the work behind the show: a label that prints the moment an item sells, and more on the way.">
 <meta name="theme-color" content="#0f0e14">
 <link rel="icon" href="/icons/icon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="/icons/icon-128.png">
@@ -59,7 +59,7 @@ h2{font:700 clamp(28px,4vw,40px)/1.1 'Space Grotesk',sans-serif;letter-spacing:-
 .how b{display:block;font:700 17px 'Space Grotesk',sans-serif;margin-bottom:6px}
 .how p{color:var(--mute);margin:0;font-size:15px}
 .step{font:700 14px 'Space Grotesk',sans-serif;color:var(--yellow);display:block;margin-bottom:10px}
-.prices{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.prices{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;max-width:760px}
 .price{border:1px solid var(--line);border-radius:14px;padding:24px;background:var(--raised)}
 .price.best{border-color:var(--yellow)}
 .price .amt{font:700 40px 'Space Grotesk',sans-serif}
@@ -88,7 +88,7 @@ footer a{color:var(--mute)}
   <div class="wrap hero">
     <span class="badge"><span class="live"></span>Built with live sellers, for live sellers</span>
     <h1>The back office for your <mark>live shows.</mark></h1>
-    <p class="lede">You run the show. Showrunner handles what happens behind it: labels that print the moment an item sells, every viewer question in one place, and more tools on the way.</p>
+    <p class="lede">You run the show. Showrunner handles what happens behind it, starting with a label that prints the moment an item sells. More tools are on the way.</p>
     <div class="ctas">
       <a class="btn primary" href="#pricing">Launching soon</a>
       <a class="btn ghost" href="#tools">See the tools</a>
@@ -101,10 +101,10 @@ footer a{color:var(--mute)}
       <p class="kicker">The tools</p>
       <h2>Small tools that keep a busy show running smoothly.</h2>
       <div class="tools">
-        <div class="tool"><span class="n">TOOL 01</span><h3>Auto Labels</h3><p>A label prints the moment an auction closes: the item, the buyer, the price. Reprint any of them in one click.</p></div>
-        <div class="tool"><span class="n">TOOL 02</span><h3>Question Queue</h3><p>Viewer questions pulled out of a fast chat into one list, with how long each has waited. Tick them off as you answer.</p></div>
+        <div class="tool"><span class="n">TOOL 01</span><h3>Auto Labels</h3><p>A label prints the moment an auction closes: the item, the buyer, the price. Reprint any of them in one click, or the last one again for a bundle.</p></div>
         <div class="tool soon"><span class="n">COMING</span><h3>Run Sheet</h3><p>Plan the lineup before you go live, and know what is up next.</p></div>
         <div class="tool soon"><span class="n">COMING</span><h3>Wrap-up</h3><p>Pick lists per buyer and the totals after the show.</p></div>
+        <div class="tool soon"><span class="n">COMING</span><h3>Show Notes</h3><p>What sold, to whom, and what buyers asked for, kept show by show.</p></div>
       </div>
     </div>
   </section>
@@ -116,7 +116,7 @@ footer a{color:var(--mute)}
       <div class="how">
         <div><span class="step">01</span><b>Add it to Chrome</b><p>Showrunner sits on top of the page you already sell from.</p></div>
         <div><span class="step">02</span><b>Plug in your label printer</b><p>DYMO LabelWriter today, with more printers to come.</p></div>
-        <div><span class="step">03</span><b>Go live</b><p>Labels print as items sell. Questions line up as they come in.</p></div>
+        <div><span class="step">03</span><b>Go live</b><p>Labels print as items sell. Reprint any of them in one click.</p></div>
       </div>
     </div>
   </section>
@@ -128,7 +128,6 @@ footer a{color:var(--mute)}
       <div class="prices">
         <div class="price"><span class="amt">$10</span> <span class="per">/ month</span><p>All tools. Cancel anytime.</p></div>
         <div class="price best"><span class="tag">Best value</span><br><span class="amt">$100</span> <span class="per">/ year</span><p>Two months free.</p></div>
-        <div class="price"><span class="amt">+$5</span> <span class="per">/ month</span><p>AI add-on: follows what you say on stream and what buyers ask in chat, so a question like “can I get the red one?” comes with the context to answer it. $50 a year. 7 days free.</p></div>
       </div>
       <p class="fine">Every account starts with a 7-day free trial. No credit card needed to try it.</p>
     </div>
