@@ -11,7 +11,7 @@ const DEFAULTS = {
   aiEnabled: false,
   endpoint: DEFAULT_ENDPOINT,
   token: '',
-  captureEnabled: false,
+  captureEnabled: true,
   printerName: '',
   labelKind: '30252',
   sellerName: '',

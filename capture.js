@@ -1148,7 +1148,7 @@
   function renderToggle() {
     if (!toggle) return;
     toggle.toggleAttribute('data-on', enabled);
-    toggle.title = enabled ? 'Showrunner is on: Auction and Questions cards, labels (click to turn off)' : 'Showrunner is off (click to turn on)';
+    toggle.title = enabled ? 'Showrunner is on: the card and auto-print labels (click to turn off)' : 'Showrunner is off: click to turn it on';
   }
 
   // Seed the history from closes already stored for this show, so a tab reload
@@ -1207,7 +1207,9 @@
     printOnClose = !!settings?.printOnClose;
     if (enabled) checkPrinter(true);
     if (cardEls && cardEls.autoInput.checked !== printOnClose) cardEls.autoInput.checked = printOnClose;
-    setEnabled(!!settings?.captureEnabled);
+    // On unless the seller switched it off: a fresh install must show the card
+    // without a trip to the settings page (owner, 2026-10-23).
+    setEnabled(settings?.captureEnabled !== false);
   }
 
   async function loadSetting() {
