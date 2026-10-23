@@ -328,6 +328,12 @@
     .wn-pnote { font-size: 12px; color: var(--wn-dim); }
     #${CARD_ID} .wn-dialog select.wn-input { appearance: auto; height: 34px; padding: 4px 8px; background: #222; color: #fff; }
     #${CARD_ID} .wn-dialog .wn-kind { white-space: nowrap; }
+    .wn-lbox { border-bottom: 0; padding-bottom: 0; }
+    .wn-previewwrap { display: grid; place-items: center; padding: 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); }
+    .wn-preview { display: flex; flex-direction: column; overflow: hidden; background: #fff; color: #000; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); font-family: Arial, Helvetica, sans-serif; }
+    .wn-pv-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; line-height: 1.05; padding: 2px 4px; overflow: hidden; white-space: nowrap; }
+    .wn-pv-bar { flex: none; background: #000; color: #fff; text-align: center; font-weight: 700; font-size: 9px; padding: 2px 0; white-space: nowrap; overflow: hidden; }
+    .wn-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 6px; }
     .wn-noprinter { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 229, 0, 0.12); font-size: 13px; }
     .wn-more { margin-top: 14px; width: 100%; padding: 9px 12px; border: 1px solid var(--wn-line); border-radius: 999px; background: transparent; color: var(--wn-fg); font: inherit; font-weight: 600; cursor: pointer; }
     .wn-more:hover { background: rgba(128, 128, 128, 0.15); }
@@ -689,9 +695,13 @@
         sIn.value = settings.sellerName || '';
         chrome.runtime.sendMessage({ type: 'label-catalog' }, (res) => {
           void chrome.runtime.lastError;
-          const labels = res?.labels || [{ code: '30252', label: '30252 Address' }];
+          const labels = res?.labels || [{ code: '30252', label: '30252 Address', short: 1.09, long: 3.5 }];
+          catalog = labels;
           lSel.replaceChildren(...labels.map((l) => opt(l.code, l.label)));
           lSel.value = settings.labelKind || '30252';
+          fieldState = { item: true, price: true, buyer: false, title: false, date: false, seller: false, tagline: true, ...(settings.labelFields || {}) };
+          for (const [k] of FIELDS) boxes[k].checked = !!fieldState[k];
+          drawPreview();
         });
       } catch (_) { /* orphaned */ }
     };
@@ -711,7 +721,76 @@
       } catch (_) { pTest.disabled = false; }
     });
 
-    dlg.append(dHead, pBox, auto, noPrinter, histHead, hist, more);
+    // Label designer (owner + Pablo, 2026-10-23): switch fields on and off, see
+    // the label at its real proportions. Order, sizes and style are fixed in
+    // background.js labelLayout() so every label stays readable.
+    const FIELDS = [
+      ['item', 'Item number (biggest)'], ['price', 'Price'], ['buyer', 'Buyer'],
+      ['title', 'Full title'], ['date', 'Date and time'], ['seller', 'Seller line'], ['tagline', 'Showrunner tag line'],
+    ];
+    let catalog = [];
+    let fieldState = {};
+    const lBox = el('div', 'wn-pbox wn-lbox');
+    const preview = el('div', 'wn-preview');
+    const previewWrap = el('div', 'wn-previewwrap');
+    previewWrap.append(preview);
+    const toggles = el('div', 'wn-fields');
+    const boxes = {};
+    for (const [k, label] of FIELDS) {
+      const row = el('label', 'wn-check');
+      const cb = el('input');
+      cb.type = 'checkbox';
+      cb.addEventListener('change', async () => {
+        fieldState[k] = cb.checked;
+        await savePrinter({ labelFields: { ...fieldState } });
+        drawPreview();
+      });
+      boxes[k] = cb;
+      row.append(cb, el('span', null, label));
+      toggles.append(row);
+    }
+    lBox.append(el('div', 'wn-plabel', 'Label layout'), previewWrap, toggles);
+
+    const sampleEntry = () => {
+      const last = history[history.length - 1];
+      return last ? { ...last } : { ts: Date.now(), title: '1:24 DIECAST - Mel #94', price: '$32', winner: 'skuey002' };
+    };
+    const drawPreview = () => {
+      const code = lSel.value || '30252';
+      const c = catalog.find((x) => x.code === code) || { short: 1.09, long: 3.5 };
+      const pxPerIn = Math.min(250 / c.long, 120 / c.short);
+      const Wpx = c.long * pxPerIn, Hpx = c.short * pxPerIn;
+      preview.style.width = `${Wpx}px`;
+      preview.style.height = `${Hpx}px`;
+      try {
+        chrome.runtime.sendMessage({ type: 'label-layout', entry: sampleEntry(), settings: { labelFields: { ...fieldState }, sellerName: sIn.value.trim(), labelKind: code } }, (res) => {
+          void chrome.runtime.lastError;
+          if (!res?.ok) return;
+          const t = Math.max(7, Math.min(20, Math.round(c.short * 12)));
+          const pt = { xl: t * 2.6, l: t * 1.5, m: t * 0.95, s: Math.max(6, t * 0.7) };
+          const body = el('div', 'wn-pv-body');
+          for (const l of res.layout.lines) {
+            const d = el('div', null, l.text);
+            d.style.fontSize = `${(pt[l.size] / 72) * pxPerIn}px`;
+            d.style.fontWeight = l.bold ? '700' : '400';
+            body.append(d);
+          }
+          const kids = [body];
+          if (res.layout.tagline) kids.push(el('div', 'wn-pv-bar', c.long < 1.6 ? 'showrunner.tools' : res.tagline));
+          preview.replaceChildren(...kids);
+          // Shrink to fit, like the printer does.
+          let k = 1;
+          while ((body.scrollHeight > body.clientHeight + 1 || body.scrollWidth > body.clientWidth + 1) && k > 0.2) {
+            k *= 0.9;
+            for (const d of body.children) d.style.fontSize = `${parseFloat(d.style.fontSize) * 0.9}px`;
+          }
+        });
+      } catch (_) { /* orphaned */ }
+    };
+    lSel.addEventListener('change', drawPreview);
+    sIn.addEventListener('input', drawPreview);
+
+    dlg.append(dHead, pBox, auto, noPrinter, lBox, histHead, hist, more);
     dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // backdrop click
     gear.addEventListener('click', () => {
       // Stays inside the card (so the card's styles apply); showModal lifts it

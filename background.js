@@ -216,37 +216,86 @@ const LABELS = Object.fromEntries(LABEL_CATALOG.map(([code, paper, short, long, 
 
 const xmlEscape = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// One text object whose styled runs carry their own font sizes: a bold title
-// line, then the smaller detail lines. ShrinkToFit keeps long titles on the label.
-function labelXml(kind, lines) {
+// The label's layout (owner + Pablo, 2026-10-23): fields are switched on and
+// off in the card's settings window; their order, sizes and styling are fixed
+// here. Pablo, on a 1×1 in label: item number biggest, then the price; no date.
+const DEFAULT_LABEL_FIELDS = { item: true, price: true, buyer: false, title: false, date: false, seller: false, tagline: true };
+const TAGLINE = 'Auto labels by showrunner.tools';
+const TAGLINE_SHORT = 'showrunner.tools'; // labels under 1.6 in wide
+
+// "1:24 DIECAST - Mel #94" -> "#94". The lot number sellers put in titles;
+// falls back to the whole title when there isn't one.
+function itemNumber(title) {
+  const m = String(title || '').match(/#\s*([A-Za-z0-9-]+)(?!.*#)/);
+  return m ? `#${m[1]}` : String(title || '').trim();
+}
+
+// [{text, size: 'xl'|'l'|'m'|'s', bold}] in print order, plus whether to add the
+// tag-line bar. Shared with the settings window's live preview.
+function labelLayout(entry, settings) {
+  const f = { ...DEFAULT_LABEL_FIELDS, ...(settings.labelFields || {}) };
+  const lines = [];
+  if (f.item) lines.push({ text: itemNumber(entry.title) || '(no title)', size: 'xl', bold: true });
+  if (f.price && entry.price) lines.push({ text: entry.price, size: 'l', bold: true });
+  if (f.buyer && entry.winner) lines.push({ text: entry.winner, size: 'm', bold: false });
+  if (f.title && entry.title) lines.push({ text: entry.title, size: 's', bold: false });
+  if (f.date) lines.push({ text: fmtWhen(entry.ts), size: 's', bold: false });
+  if (f.seller && settings.sellerName) lines.push({ text: settings.sellerName, size: 's', bold: false });
+  if (!lines.length) lines.push({ text: itemNumber(entry.title) || '(no title)', size: 'xl', bold: true });
+  return { lines, tagline: !!f.tagline };
+}
+
+// Point sizes per label: scaled from the label's short side, then ShrinkToFit
+// (DYMO) / the bridge's fit loop keeps everything on the label.
+function sizesFor(L) {
+  const t = L.title; // ~12 pt on a 1 in label
+  return { xl: Math.round(t * 2.6), l: Math.round(t * 1.5), m: Math.round(t * 0.95), s: Math.max(6, Math.round(t * 0.7)) };
+}
+
+function textObject(name, runs, [x, y, w, h], { align = 'Center', back = null, fore = [0, 0, 0] } = {}) {
+  const [fr, fg, fb] = fore;
+  const run = (text, size, bold) => `<Element><String>${xmlEscape(text)}</String><Attributes><Font Family="Arial" Size="${size}" Bold="${bold ? 'True' : 'False'}" Italic="False" Underline="False" Strikeout="False"/><ForeColor Alpha="255" Red="${fr}" Green="${fg}" Blue="${fb}"/></Attributes></Element>`;
+  const backXml = back ? `<BackColor Alpha="255" Red="${back[0]}" Green="${back[1]}" Blue="${back[2]}"/>` : '<BackColor Alpha="0" Red="255" Green="255" Blue="255"/>';
+  return `<ObjectInfo>
+    <TextObject>
+      <Name>${name}</Name>
+      <ForeColor Alpha="255" Red="${fr}" Green="${fg}" Blue="${fb}"/>
+      ${backXml}
+      <LinkedObjectName></LinkedObjectName>
+      <Rotation>Rotation0</Rotation>
+      <IsMirrored>False</IsMirrored>
+      <IsVariable>False</IsVariable>
+      <HorizontalAlignment>${align}</HorizontalAlignment>
+      <VerticalAlignment>Middle</VerticalAlignment>
+      <TextFitMode>ShrinkToFit</TextFitMode>
+      <UseFullFontHeight>True</UseFullFontHeight>
+      <Verticalized>False</Verticalized>
+      <StyledText>${runs.map((r, i) => run((i ? '\n' : '') + r.text, r.size, r.bold)).join('')}</StyledText>
+    </TextObject>
+    <Bounds X="${x}" Y="${y}" Width="${w}" Height="${h}"/>
+  </ObjectInfo>`;
+}
+
+// Main text centered; the optional tag line is white on a black bar along the
+// bottom edge (an ad for Showrunner on every label, owner's ask).
+function labelXml(kind, layout) {
   const L = LABELS[kind] || LABELS[30252];
-  const run = (text, size, bold) => `<Element><String>${xmlEscape(text)}</String><Attributes><Font Family="Arial" Size="${size}" Bold="${bold ? 'True' : 'False'}" Italic="False" Underline="False" Strikeout="False"/><ForeColor Alpha="255" Red="0" Green="0" Blue="0"/></Attributes></Element>`;
-  const runs = lines.map((l, i) => run((i ? '\n' : '') + l.text, l.title ? L.title : L.body, !!l.title)).join('');
+  const S = sizesFor(L);
   const [x, y, w, h] = L.bounds;
+  const barH = layout.tagline ? Math.round(Math.min(260, Math.max(170, L.w * 0.16))) : 0;
+  const gap = layout.tagline ? 40 : 0;
+  const main = textObject('TEXT', layout.lines.map((l) => ({ text: l.text, size: S[l.size], bold: l.bold })), [x, y, w, h - barH - gap]);
+  const bar = layout.tagline
+    ? textObject('FOOTER', [{ text: L.h < 1.6 * 1440 ? TAGLINE_SHORT : TAGLINE, size: Math.max(5, Math.round(L.title * 0.5)), bold: true }], [x, y + h - barH, w, barH], { back: [0, 0, 0], fore: [255, 255, 255] })
+    : '';
   return `<?xml version="1.0" encoding="utf-8"?>
 <DieCutLabel Version="8.0" Units="twips">
   <PaperOrientation>Landscape</PaperOrientation>
   <Id>Label</Id>
   <PaperName>${L.paper}</PaperName>
   <DrawCommands><RoundRectangle X="0" Y="0" Width="${L.w}" Height="${L.h}" Rx="270" Ry="270"/></DrawCommands>
-  <ObjectInfo>
-    <TextObject>
-      <Name>TEXT</Name>
-      <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
-      <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
-      <LinkedObjectName></LinkedObjectName>
-      <Rotation>Rotation0</Rotation>
-      <IsMirrored>False</IsMirrored>
-      <IsVariable>False</IsVariable>
-      <HorizontalAlignment>Left</HorizontalAlignment>
-      <VerticalAlignment>Middle</VerticalAlignment>
-      <TextFitMode>ShrinkToFit</TextFitMode>
-      <UseFullFontHeight>True</UseFullFontHeight>
-      <Verticalized>False</Verticalized>
-      <StyledText>${runs}</StyledText>
-    </TextObject>
-    <Bounds X="${x}" Y="${y}" Width="${w}" Height="${h}"/>
-  </ObjectInfo>
+  ${main}
+  ${bar}
 </DieCutLabel>`;
 }
 
@@ -256,17 +305,6 @@ function fmtWhen(ts) {
     d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-// The lines on a label for one close: title, when, seller/winner/price.
-function labelLines(entry, settings) {
-  const lines = [{ text: entry.title || '(no title)', title: true }, { text: fmtWhen(entry.ts) }];
-  const bits = [];
-  if (settings.sellerName) bits.push(settings.sellerName);
-  if (entry.winner) bits.push(entry.winner);
-  if (entry.price) bits.push(entry.price);
-  if (bits.length) lines.push({ text: bits.join(' · ') });
-  return lines;
-}
-
 async function dymoPrint(entry) {
   const { settings = {} } = await chrome.storage.local.get('settings');
   if (!settings.printerName) throw new Error('No printer chosen on the settings page');
@@ -274,7 +312,7 @@ async function dymoPrint(entry) {
   const body = new URLSearchParams({
     printerName: settings.printerName,
     printParamsXml: '<LabelWriterPrintParams><Copies>1</Copies><PrintQuality>Text</PrintQuality></LabelWriterPrintParams>',
-    labelXml: labelXml(settings.labelKind || 30252, labelLines(entry, settings)),
+    labelXml: labelXml(settings.labelKind || 30252, labelLayout(entry, settings)),
     labelSetXml: '',
   });
   const res = await fetch(`${base}/PrintLabel`, { method: 'POST', body, signal: AbortSignal.timeout(15000) });
@@ -329,6 +367,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendFeedback(msg).then(sendResponse, (err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }
+  if (msg?.type === 'label-layout') {
+    chrome.storage.local.get('settings').then(({ settings = {} }) => {
+      const merged = { ...settings, ...(msg.settings || {}) };
+      sendResponse({ ok: true, layout: labelLayout(msg.entry, merged), tagline: TAGLINE, defaults: DEFAULT_LABEL_FIELDS });
+    });
+    return true;
+  }
   if (msg?.type === 'open-options') {
     chrome.runtime.openOptionsPage();
     sendResponse({ ok: true });
@@ -346,7 +391,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false;
   }
   if (msg?.type === 'label-catalog') {
-    sendResponse({ ok: true, labels: LABEL_CATALOG.map(([code]) => ({ code, label: LABELS[code].label })) });
+    sendResponse({ ok: true, labels: LABEL_CATALOG.map(([code, , short, long]) => ({ code, label: LABELS[code].label, short, long })) });
     return false;
   }
   if (msg?.type === 'printer-status') {

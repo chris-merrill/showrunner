@@ -109,31 +109,63 @@ def printers_xml():
 
 
 def parse_label(label_xml):
-    """-> (paper name, [(text, size_pt, bold)]) from a DieCutLabel's StyledText."""
+    """-> (paper name, [(text, size_pt, bold)], footer text or None) from a DieCutLabel.
+
+    TEXT is the main block (centered); FOOTER, when present, is drawn as a black
+    bar with white text along the bottom edge (the extension's tag line)."""
     # The stdlib parser expands entities; a label never needs a DOCTYPE, so
     # refuse one rather than risk an entity-expansion blow-up.
     if "<!DOCTYPE" in label_xml or "<!ENTITY" in label_xml:
         raise ValueError("DOCTYPE/ENTITY not allowed in label XML")
     root = ET.fromstring(label_xml)
     paper = (root.findtext("PaperName") or DEFAULT_PAPER).strip()
-    runs = []
-    for el in root.iter("Element"):
-        text = el.findtext("String") or ""
-        font = el.find("Attributes/Font")
-        size = float(font.get("Size", "10")) if font is not None else 10.0
-        size = min(72.0, max(4.0, size))
-        bold = (font.get("Bold", "False") == "True") if font is not None else False
-        runs.append((text, size, bold))
-    return paper, runs
+    runs, footer = [], None
+    objs = root.findall(".//TextObject") or [root]
+    for obj in objs:
+        name = (obj.findtext("Name") or "TEXT").strip().upper()
+        obj_runs = []
+        for el in obj.iter("Element"):
+            text = el.findtext("String") or ""
+            font = el.find("Attributes/Font")
+            size = float(font.get("Size", "10")) if font is not None else 10.0
+            size = min(72.0, max(4.0, size))
+            bold = (font.get("Bold", "False") == "True") if font is not None else False
+            obj_runs.append((text, size, bold))
+        if name == "FOOTER":
+            footer = "".join(t for t, _, _ in obj_runs).strip() or None
+        else:
+            runs.extend(obj_runs)
+    return paper, runs, footer
 
 
-def render(paper, runs):
-    """Draw the runs onto a label-sized image, shrinking the text to fit the width."""
+def _fit(draw, lines, max_w, max_h):
+    """Fonts and line heights for lines [(text, size, bold)], shrunk together to fit."""
+    scale = 1.0
+    while True:
+        fonts = [ImageFont.truetype(FONT_BOLD if b else FONT_REG, max(8, int(s * scale * DPI / 72))) for _, s, b in lines]
+        widths = [draw.textlength(t, font=f) for (t, _, _), f in zip(lines, fonts)]
+        heights = [f.getbbox("Ag")[3] + int(0.02 * DPI) for f in fonts]
+        if (not widths or max(widths) <= max_w) and sum(heights) <= max_h or scale < 0.05:
+            return fonts, widths, heights
+        scale *= 0.92
+
+
+def render(paper, runs, footer=None):
+    """Draw the label: main lines centered, optional footer bar at the bottom."""
     w_in, h_in, _ = PAPERS.get(paper, PAPERS[DEFAULT_PAPER])
     W, H = int(w_in * DPI), int(h_in * DPI)
     img = Image.new("1", (W, H), 1)
     draw = ImageDraw.Draw(img)
-    margin = int(0.08 * DPI)
+    margin = int(0.07 * DPI)
+
+    bar_h = 0
+    if footer:
+        bar_h = int(min(0.18, max(0.12, h_in * 0.16)) * DPI)
+        draw.rectangle([0, H - bar_h, W, H], fill=0)
+        f_lines = [(footer, bar_h * 72 / DPI * 0.75, True)]
+        fonts, widths, heights = _fit(draw, f_lines, W - 2 * margin, bar_h - int(0.02 * DPI))
+        fy = H - bar_h + (bar_h - heights[0]) // 2
+        draw.text(((W - widths[0]) // 2, fy), footer, font=fonts[0], fill=1)
 
     # Split runs into lines; a run may start with "\n".
     lines = []  # [(text, size, bold)]
@@ -144,19 +176,14 @@ def render(paper, runs):
             elif piece or i > 0:
                 lines.append((piece, size, bold))
     lines = [l for l in lines if l[0]]
+    if not lines:
+        return img
 
-    scale = 1.0
-    while True:
-        fonts = [ImageFont.truetype(FONT_BOLD if b else FONT_REG, max(8, int(s * scale * DPI / 72))) for _, s, b in lines]
-        widths = [draw.textlength(t, font=f) for (t, _, _), f in zip(lines, fonts)]
-        heights = [f.getbbox("Ag")[3] + int(0.03 * DPI) for f in fonts]
-        if (not widths or max(widths) <= W - 2 * margin) and sum(heights) <= H - 2 * margin or scale < 0.3:
-            break
-        scale *= 0.92
-
-    y = (H - sum(heights)) // 2
-    for (t, _, _), f, h in zip(lines, fonts, heights):
-        draw.text((margin, y), t, font=f, fill=0)
+    area_h = H - bar_h - 2 * margin
+    fonts, widths, heights = _fit(draw, lines, W - 2 * margin, area_h)
+    y = margin + (area_h - sum(heights)) // 2
+    for (t, _, _), f, w, h in zip(lines, fonts, widths, heights):
+        draw.text(((W - w) // 2, y), t, font=f, fill=0)
         y += h
     return img
 
@@ -166,8 +193,8 @@ def print_label(printer_desc, label_xml):
     queue = queues.get(printer_desc)
     if not queue:
         raise ValueError(f"unknown printer {printer_desc!r}; known: {list(queues)}")
-    paper, runs = parse_label(label_xml)
-    img = render(paper, runs)
+    paper, runs, footer = parse_label(label_xml)
+    img = render(paper, runs, footer)
     long_in, short_in, page = PAPERS.get(paper, PAPERS[DEFAULT_PAPER])
     media = f"PageSize={page}" if page else f"media=Custom.{short_in}x{long_in}in"
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
