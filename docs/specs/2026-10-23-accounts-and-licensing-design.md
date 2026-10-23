@@ -72,6 +72,12 @@ everything around it so billing drops in later.
   `hasAccess` = freeGrant, or plan 'active', or (plan 'trial' and now < trialEndsAt). Without Stripe, 'active' is
   only set by the admin.
 - Rules: the owner reads their own account; all writes go through the API (Admin SDK). Admin reads all.
+- **`/app` and `/admin` answer 404 to anyone not signed in** (owner, 2026-10-23: "only for logged in users.
+  unauthed users get a 404"); `/admin` also 404s for signed-in non-admins. Enforced on the server: after Google
+  sign-in the page exchanges its ID token for a Firebase session cookie (`__session`, httpOnly, secure, 14 days)
+  via `POST /api/session`; Hosting rewrites `/app` and `/admin` to a function that verifies the cookie and returns
+  the page, or the site's 404 page with status 404. Sign-in itself happens at `/signin` (public). Trade-off
+  (Claude's call): the first `/app` load after a quiet spell can take a second or two while that function wakes.
 - The landing page stays as it is (it's live). The signed-in user UI lives at **`/app`** (owner, 2026-10-23), a new
   page with the site's header, footer and theme. `/app` (same look as the site): plan/trial card ("Trial · 5 days left", "Free (granted)", "Expired"),
   Shop card (claimed shop name), Computers card (list with name/last seen, Remove), Sign out. The avatar menu gains
