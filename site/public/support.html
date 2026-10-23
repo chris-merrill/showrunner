@@ -69,6 +69,8 @@
 // Goes to the same inbox as the extension's ? window, through Showrunner's API,
 // which checks the Turnstile token with Cloudflare before saving anything.
 const f=document.getElementById('cf'), r=document.getElementById('cr'), b=document.getElementById('cs');
+// ?topic=feature (from the home page's "Your idea here" card) preselects the topic.
+const t=new URLSearchParams(location.search).get('topic'); if(['feature','bug','feedback'].includes(t)) document.getElementById('ck').value=t;
 f.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email=document.getElementById('ce').value.trim(), message=document.getElementById('cm').value.trim();

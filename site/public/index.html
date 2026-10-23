@@ -56,6 +56,11 @@ h2{font:700 clamp(28px,4vw,40px)/1.1 'Space Grotesk',sans-serif;letter-spacing:-
 .tool p{color:var(--mute);font-size:14.5px;margin:0}
 .tool.soon h3,.tool.soon p{opacity:.5}
 .soon .n{color:var(--yellow)}
+.tool.ask{display:block;text-decoration:none;color:inherit;position:relative;transition:background .15s}
+.tool.ask:hover{background:#17161f}
+.tool.ask .n{color:var(--yellow)}
+.tool.ask .q{position:absolute;top:14px;right:18px;width:30px;height:30px;border-radius:50%;background:var(--yellow);color:#111;font:700 18px/30px 'Space Grotesk',sans-serif;text-align:center}
+.tool.ask .go{display:inline-block;margin-top:12px;font-weight:600;font-size:14px;color:var(--yellow)}
 .how{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
 .how b{display:block;font:700 17px 'Space Grotesk',sans-serif;margin-bottom:6px}
 .how p{color:var(--mute);margin:0;font-size:15px}
@@ -118,7 +123,7 @@ nav .links .menu a{margin-left:0;color:var(--ink)}
         <div class="tool"><span class="n">TOOL 01</span><h3>Auto Labels</h3><p>A label prints the moment an auction closes: the item, the buyer, the price. Reprint any of them in one click, or the last one again for a bundle.</p></div>
         <div class="tool soon"><span class="n">COMING</span><h3>Run Sheet</h3><p>Plan the lineup before you go live, and know what is up next.</p></div>
         <div class="tool soon"><span class="n">COMING</span><h3>Wrap-up</h3><p>Pick lists per buyer and the totals after the show.</p></div>
-        <div class="tool soon"><span class="n">COMING</span><h3>Show Notes</h3><p>What sold, to whom, and what buyers asked for, kept show by show.</p></div>
+        <a class="tool ask" href="/support?topic=feature#contact"><span class="n">TOOL ?</span><span class="q">?</span><h3>Your idea here</h3><p>Our tools come from sellers. Tell us what would make your shows easier.</p><span class="go">Request a tool →</span></a>
       </div>
     </div>
   </section>
