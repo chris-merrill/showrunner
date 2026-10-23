@@ -59,6 +59,7 @@ pre{background:#0b0a10;border:1px solid var(--line);border-radius:10px;padding:1
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // Public web config (client-side by design). Project: showrunner-tools.
 const app = initializeApp({
@@ -68,6 +69,8 @@ const app = initializeApp({
   appId: '1:475370655942:web:5f85f28ac490488c4fc7c7',
 });
 const auth = getAuth(app);
+const fsdb = getFirestore(app);
+let unwatch = null;
 const DB = 'https://firestore.googleapis.com/v1/projects/showrunner-tools/databases/(default)/documents';
 const $app = document.getElementById('app');
 const $who = document.getElementById('who');
@@ -150,7 +153,7 @@ function render() {
       ${diag ? `<details><summary>Diagnostics</summary><pre>${esc(diag)}</pre></details>` : ''}
     </article>`;
   }).join('');
-  $app.innerHTML = `<div class="bar">${chips}<span class="status" id="st">${loadedAt ? `updated ${ago(loadedAt)}` : 'showing saved copy, refreshing…'} · <a href="#" id="rf" style="color:var(--yellow)">refresh</a></span></div>
+  $app.innerHTML = `<div class="bar">${chips}<span class="status" id="st">${loadedAt ? `live · updated ${ago(loadedAt)} · ` : 'showing saved copy, refreshing… · '}<a href="#" id="rf" style="color:var(--yellow)">refresh</a></span></div>
     ${cards || '<p class="empty">Nothing here.</p>'}`;
   for (const b of $app.querySelectorAll('[data-f]')) b.onclick = () => { filter = b.dataset.f; render(); };
   for (const b of $app.querySelectorAll('[data-toggle]')) b.onclick = () => setStatus(b.dataset.toggle, b.dataset.to);
@@ -181,7 +184,7 @@ function showErr(err) {
 onAuthStateChanged(auth, async (user) => {
   if (!user) return signedOut();
   $who.innerHTML = `<span>${esc(user.email)}</span><button class="btn" id="so">Sign out</button>`;
-  document.getElementById('so').onclick = () => { try { localStorage.removeItem(CACHE); } catch (_) {} signOut(auth); };
+  document.getElementById('so').onclick = () => { try { localStorage.removeItem(CACHE); } catch (_) {} if (unwatch) { unwatch(); unwatch = null; } signOut(auth); };
   try {
     await api(`admins/${user.uid}`);
   } catch (err) {
@@ -191,8 +194,14 @@ onAuthStateChanged(auth, async (user) => {
   }
   try { items = JSON.parse(localStorage.getItem(CACHE) || '[]'); } catch (_) { items = []; }
   render();
-  load().catch(showErr);
-  setInterval(() => load().catch(showErr), 30000);
+  // Live: a Firestore listener on the inbox; any add or change triggers a
+  // reload (the REST read carries each report's arrival time, which the SDK
+  // doesn't expose). Coalesced so a burst is one reload.
+  let pending = null;
+  const reload = () => { clearTimeout(pending); pending = setTimeout(() => load().catch(showErr), 250); };
+  if (unwatch) unwatch();
+  unwatch = onSnapshot(collection(fsdb, 'feedback'), reload, (err) => showErr(err));
+  setInterval(() => { const st = document.getElementById('st'); if (st && loadedAt) st.firstChild.textContent = `live · updated ${ago(loadedAt)} · `; }, 15000);
 });
 </script>
 </body>
