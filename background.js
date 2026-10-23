@@ -282,6 +282,15 @@ const BETA_BACKSTOP = '2026-12-15T07:00:00Z';
 const BETA_FRESH_MS = 12 * 60 * 60 * 1000;
 const BETA_TRUST_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Only https links on showrunner.tools may appear on the card (never javascript: etc).
+function safeUrl(u) {
+  try {
+    const x = new URL(String(u || ''));
+    if (x.protocol === 'https:' && (x.hostname === 'showrunner.tools' || x.hostname.endsWith('.showrunner.tools'))) return x.href;
+  } catch (_) { /* fall through */ }
+  return 'https://showrunner.tools/support';
+}
+
 async function betaStatus() {
   // Only Chrome Web Store installs carry an update_url. Hand-installed copies
   // (Pablo's, from GitHub) never expire (owner, 2026-10-23: "i won't shut pablo off").
@@ -293,7 +302,7 @@ async function betaStatus() {
       const r = await fetch(BETA_URL, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
       const j = await r.json();
       if (j && typeof j.endsAt === 'string' && !Number.isNaN(Date.parse(j.endsAt))) {
-        b = { endsAt: j.endsAt, message: String(j.message || ''), url: String(j.url || 'https://showrunner.tools'), fetchedAt: Date.now() };
+        b = { endsAt: j.endsAt, message: String(j.message || '').slice(0, 200), url: safeUrl(j.url), fetchedAt: Date.now() };
         await chrome.storage.local.set({ beta: b });
       }
     } catch (_) { /* offline: fall back below */ }
@@ -304,7 +313,7 @@ async function betaStatus() {
     ended: Date.now() >= Date.parse(endsAt),
     endsAt,
     message: b?.message || 'This Showrunner beta has ended. Update Showrunner to keep printing labels.',
-    url: b?.url || 'https://showrunner.tools',
+    url: safeUrl(b?.url),
   };
 }
 

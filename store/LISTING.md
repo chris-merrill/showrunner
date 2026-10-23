@@ -1,6 +1,6 @@
-# Chrome Web Store submission: Showrunner 1.8.0
+# Chrome Web Store submission: Showrunner 1.8.1
 
-Upload: `store/Showrunner-1.8.0-chrome-web-store.zip`
+Upload: `store/Showrunner-1.8.1-chrome-web-store.zip`
 
 ## Store listing tab
 

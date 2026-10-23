@@ -1211,7 +1211,9 @@
         cardEls.beta.hidden = !betaEnded;
         if (betaEnded) {
           cardEls.betaText.textContent = betaEnded.message;
-          cardEls.betaLink.href = betaEnded.url;
+          let href = 'https://showrunner.tools/support';
+          try { const u = new URL(betaEnded.url); if (u.protocol === 'https:' && /(^|\.)showrunner\.tools$/.test(u.hostname)) href = u.href; } catch (_) { /* keep default */ }
+          cardEls.betaLink.href = href;
         }
       });
     } catch (_) { /* orphaned copy */ }
