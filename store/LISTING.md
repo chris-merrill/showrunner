@@ -30,7 +30,7 @@ READ-ONLY BY DESIGN
 Showrunner only reads your own seller page. It never clicks, bids, posts or sends messages for you. Your settings and sale history stay on your computer.
 
 PUBLIC BETA
-Free during the beta. Tools are shaped by sellers: tell us what you'd like next at showrunner.tools.
+Free during the beta. This beta version works until the beta ends (currently November 23, 2026); an update will add Showrunner accounts. Tools are shaped by sellers: tell us what you'd like next at showrunner.tools.
 
 Showrunner works with Whatnot. It is not affiliated with or endorsed by Whatnot Inc.
 
