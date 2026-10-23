@@ -61,8 +61,41 @@
 
   // ------------------------------------------------------------ reading
 
+  // The seller's dashboard (/dashboard/live/<id>), mapped 2026-10-23 on a test
+  // show. The current item sits over the video, beside the stream controls
+  // (.z-seller-live-stream-controls): title (strong.text-title2), the price
+  // (div.text-[16px]) and, while the auction runs, the countdown
+  // [data-testid="show-timer"] ("00:12"). When it ends unsold the timer just
+  // disappears. The sold state (winner) is not mapped yet: until it is, a
+  // "won" / "sold" line anywhere in that block counts as sold.
+  function readSellerPanel() {
+    const controls = document.querySelector('.z-seller-live-stream-controls');
+    if (!controls) return null;
+    const strongs = [...controls.querySelectorAll('strong')];
+    const titleEl = strongs.find((x) => /\btext-title2\b/.test(x.className));
+    if (!titleEl) return { title: '', subtitle: '', bids: '', price: '', status: '', winner: '', winState: '', panel: '', sold: false, running: false, waiting: true };
+    const block = titleEl.closest('section.flex-col.items-stretch.gap-3') || controls;
+    const title = text(titleEl);
+    const subtitle = text(block.querySelector('strong span'));
+    const priceEl = block.querySelector('div[class*="text-[16px]"]');
+    const price = text(priceEl);
+    const timer = text(controls.querySelector('[data-testid="show-timer"]'));
+    const panel = (block.innerText || '').replace(/\s*\n+\s*/g, ' | ').trim();
+    const wonM = panel.match(/(?:^|\|)\s*([^|]+?)\s+won\b/i);
+    const winner = wonM ? wonM[1].trim() : '';
+    const sold = !!winner || /\bsold\b/i.test(panel);
+    let bids = '';
+    const bm = panel.match(/\b\d+\s+bids?\b/i);
+    if (bm) bids = bm[0].trim();
+    return {
+      title, subtitle, bids, price, status: timer, winner, winState: winner ? 'won!' : '', panel,
+      sold, running: TIMER_RE.test(timer), waiting: !timer && !sold,
+    };
+  }
+
   // Read the current-item panel into fields. Returns null when there's no live player.
   function readFooter() {
+    if (/^\/dashboard\/live\//.test(location.pathname)) return readSellerPanel();
     const f = document.querySelector(FOOTER);
     if (!f) return null;
     const strongs = [...f.querySelectorAll('strong')];
