@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Support · Showrunner</title>
+<meta name="theme-color" content="#0f0e14">
+<link rel="icon" href="/icons/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icons/icon-128.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+<header class="wrap">
+  <nav>
+    <a class="logo" href="/"><img src="/icons/icon-128.png" alt="">Showrunner</a>
+    <div class="links"><a href="/#tools">Tools</a><a href="/#pricing">Pricing</a><a href="/support">Support</a><span id="acct" class="acct"></span></div>
+  </nav>
+</header>
+<main class="wrap prose-wrap"><div class="prose" style="max-width:760px;margin:0 auto;padding:48px 0 64px">
+
+<p class="kicker">Support</p>
+<h1>How can we help?</h1>
+<p>Showrunner is in public beta and free while it is. The fastest way to reach us is from inside the extension: click <b>?</b> on the Showrunner card during a show to report a bug, request a feature or send feedback. It includes your printer settings and recent sales (if you leave that box ticked), which helps us fix things quickly.</p>
+
+<h2>Getting started</h2>
+<ol>
+  <li>Install DYMO Connect for Desktop (Windows) from dymo.com and plug in your LabelWriter by USB. On a Mac, use the Showrunner Print Bridge instead.</li>
+  <li>Add the Showrunner extension to Chrome.</li>
+  <li>Open your show from <b>Seller Hub › Shows › Open show</b>. The Showrunner card appears at the top of your product list.</li>
+  <li>Click <b>⚙</b> on the card: pick your printer and label, click <b>Print test label</b>, choose what goes on the label, turn on <b>Auto-print</b>, and click <b>Save</b>.</li>
+</ol>
+<p>The full setup guide is on <a href="https://github.com/chris-merrill/showrunner/blob/main/SETUP.md" target="_blank" rel="noopener">GitHub</a>.</p>
+
+<h2>Common questions</h2>
+<div class="faq">
+  <details><summary>I don't see the Showrunner card.</summary><p>It only appears on your own show's seller dashboard (Seller Hub › Shows › Open show), not on the viewer's page or the home page. If you just installed or updated the extension, refresh the show tab.</p></details>
+  <details><summary>A label didn't print.</summary><p>The card says why in red. Usually the printer is off or out of labels, or the DYMO service isn't running (restart the PC). Open <b>⚙</b> and click <b>Print test label</b> to check the printer on its own. Any sale in the card's history can be reprinted with its printer icon.</p></details>
+  <details><summary>Which printers and labels work?</summary><p>DYMO LabelWriter 450 and 550 by USB. Any DYMO die-cut label: 1 × 1 in (30332) and 3½ × 1⅛ in address labels (30252) are popular. The label preview in <b>⚙</b> shows how yours will look.</p></details>
+  <details><summary>What's on the label?</summary><p>By default the item number from your title (the "#94" in "Mel #94") in large type, then the price. You can add the buyer, the full title, the date and time, and a seller line. A small "showrunner.tools" bar runs along the bottom during the beta.</p></details>
+  <details><summary>Does Showrunner do anything on my account?</summary><p>No. It only reads your own seller page. It never clicks, bids, posts or messages anyone for you.</p></details>
+  <details><summary>How much does it cost?</summary><p>Free during the public beta. After that, $10 a month or $100 a year, with a 7-day free trial and no credit card needed to try it. We'll give plenty of notice before anything changes.</p></details>
+</div>
+
+<h2 id="contact">Contact us</h2>
+<p>Send us a note and we'll reply by email. You can also write to <a href="mailto:contact@core-commerce.io?subject=Showrunner">contact@core-commerce.io</a>.</p>
+<form class="contact" id="cf">
+  <select id="ck" aria-label="Topic"><option value="feedback">General question or feedback</option><option value="bug">Something isn't working</option><option value="feature">Feature request</option></select>
+  <input id="ce" type="email" required maxlength="200" placeholder="Your email" autocomplete="email">
+  <textarea id="cm" rows="5" required maxlength="5000" placeholder="How can we help?"></textarea>
+  <div><button class="btn" id="cs" type="submit">Send</button></div>
+  <div class="sent" id="cr"></div>
+</form>
+</div></main>
+<footer>
+  <div class="wrap row">
+    <span class="fl"><a href="/support">Support</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/support#contact">Contact</a></span>
+    <span>Not affiliated with or endorsed by any live-selling platform.</span>
+    <span>Showrunner is a <a href="https://core-commerce.io">Core Commerce</a> product · © 2026 Core Commerce LLC</span>
+  </div>
+</footer>
+<script type="module" src="/assets/acct.js"></script>
+<script>
+// Same inbox as the extension's ? window (Firestore feedback, create-only rules).
+const f=document.getElementById('cf'), r=document.getElementById('cr'), b=document.getElementById('cs');
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email=document.getElementById('ce').value.trim(), message=document.getElementById('cm').value.trim();
+  if(!email||!message) return;
+  b.disabled=true; b.textContent='Sending…'; r.textContent='';
+  try{
+    const res=await fetch('https://firestore.googleapis.com/v1/projects/showrunner-tools/databases/(default)/documents/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:{type:{stringValue:document.getElementById('ck').value},message:{stringValue:message},email:{stringValue:email},version:{stringValue:'site'},page:{stringValue:'support-page'}}})});
+    if(!res.ok) throw new Error(res.status);
+    f.reset(); r.dataset.ok='1'; r.textContent='Thanks, we got it. We\u2019ll reply by email.';
+  }catch(_){ r.dataset.ok='0'; r.textContent='Couldn\u2019t send. Please try again, or email contact@core-commerce.io.'; }
+  b.disabled=false; b.textContent='Send';
+});
+</script>
+</body>
+</html>

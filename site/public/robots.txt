@@ -1,0 +1,3 @@
+# Not ready for search engines or AI crawlers yet (owner, 2026-10-23).
+User-agent: *
+Disallow: /

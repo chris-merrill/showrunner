@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Showrunner · The back office for your live shows</title>
 <meta name="description" content="Showrunner gives live sellers tools for the work behind the show: a label that prints the moment an item sells, and more on the way.">
+<meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0f0e14">
 <link rel="icon" href="/icons/icon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="/icons/icon-128.png">
@@ -69,6 +70,7 @@ h2{font:700 clamp(28px,4vw,40px)/1.1 'Space Grotesk',sans-serif;letter-spacing:-
 footer{border-top:1px solid var(--line);padding:32px 0 48px;color:var(--mute);font-size:13px}
 footer .row{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between}
 footer a{color:var(--mute)}
+footer .fl a{margin-right:18px}
 nav .links{display:flex;align-items:center}
 .acct{position:relative;margin-left:20px}
 .acct:empty{display:none}
@@ -92,7 +94,7 @@ nav .links .menu a{margin-left:0;color:var(--ink)}
 <header class="wrap">
   <nav>
     <a class="logo" href="/"><img src="/icons/icon-128.png" alt="">Showrunner</a>
-    <div class="links"><a href="#tools">Tools</a><a href="#pricing">Pricing</a><span id="acct" class="acct"></span></div>
+    <div class="links"><a href="#tools">Tools</a><a href="#pricing">Pricing</a><a href="/support">Support</a><span id="acct" class="acct"></span></div>
   </nav>
 </header>
 
@@ -148,60 +150,12 @@ nav .links .menu a{margin-left:0;color:var(--ink)}
 
 <footer>
   <div class="wrap row">
+    <span class="fl"><a href="/support">Support</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/support#contact">Contact</a></span>
     <span>Showrunner is a <a href="https://core-commerce.io">Core Commerce</a> product.</span>
     <span>Not affiliated with or endorsed by any live-selling platform.</span>
     <span>© 2026 Core Commerce LLC</span>
   </div>
 </footer>
-<script type="module">
-// Signed-in visitors see their avatar and a small menu (Admin for the admin).
-// Remembered locally so it shows instantly; confirmed in the background.
-const KEY = 'sr-me';
-const $acct = document.getElementById('acct');
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-let auth = null;
-
-function draw(me) {
-  if (!me) { $acct.innerHTML = ''; return; }
-  const initial = esc((me.name || me.email || '?').trim()[0].toUpperCase());
-  const pic = me.photo ? ` style="background-image:url('${esc(me.photo)}')"` : '';
-  $acct.innerHTML = `<button class="av" id="avb" aria-haspopup="menu" aria-expanded="false" title="${esc(me.email)}"${pic}>${me.photo ? '' : initial}</button>
-    <div class="menu" id="mnu" role="menu" hidden>
-      <div class="me"><b>${esc(me.name || 'Signed in')}</b><span>${esc(me.email)}</span></div>
-      ${me.admin ? '<a href="/admin" role="menuitem">Admin</a>' : ''}
-      <button type="button" id="so" role="menuitem">Sign out</button>
-    </div>`;
-  const btn = document.getElementById('avb'), menu = document.getElementById('mnu');
-  btn.onclick = (e) => { e.stopPropagation(); const open = menu.hidden; menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
-  document.addEventListener('click', () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); } });
-  document.getElementById('so').onclick = async () => {
-    try { localStorage.removeItem(KEY); } catch (_) {}
-    draw(null);
-    if (auth) { const { signOut } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'); signOut(auth); }
-  };
-}
-
-try { draw(JSON.parse(localStorage.getItem(KEY) || 'null')); } catch (_) {}
-
-(async () => {
-  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
-  const { getAuth, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
-  const app = initializeApp({ apiKey: 'AIzaSyAw9JMZsAq6Skd1gUHqKjcS7yQWpJGnFz4', authDomain: 'showrunner-tools.firebaseapp.com', projectId: 'showrunner-tools', appId: '1:475370655942:web:5f85f28ac490488c4fc7c7' });
-  auth = getAuth(app);
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) { try { localStorage.removeItem(KEY); } catch (_) {} draw(null); return; }
-    let admin = false;
-    try {
-      const t = await user.getIdToken();
-      const r = await fetch(`https://firestore.googleapis.com/v1/projects/showrunner-tools/databases/(default)/documents/admins/${user.uid}`, { headers: { Authorization: `Bearer ${t}` } });
-      admin = r.ok;
-    } catch (_) {}
-    const me = { name: user.displayName, email: user.email, photo: user.photoURL, admin };
-    try { localStorage.setItem(KEY, JSON.stringify(me)); } catch (_) {}
-    draw(me);
-  });
-})();
-</script>
+<script type="module" src="/assets/acct.js"></script>
 </body>
 </html>
