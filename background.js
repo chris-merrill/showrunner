@@ -19,7 +19,7 @@ function isAlreadyActive(tabId) {
 async function injectInto(tabId) {
   if (await isAlreadyActive(tabId)) return false;
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js', 'capture.js'] });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['capture.js'] });
     return true;
   } catch (err) {
     console.warn('[wch] inject failed for tab', tabId, err.message);

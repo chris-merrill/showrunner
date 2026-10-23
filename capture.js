@@ -512,7 +512,13 @@
   }
 
   // background.js reports each label it printed (or failed to) for a close.
-  chrome.runtime.onMessage.addListener((msg) => {
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    // background.js and the settings page ping before injecting, so a tab never
+    // gets a second copy (two copies would print every label twice).
+    if (msg?.type === 'ping') {
+      sendResponse({ ok: true, attached: onShowPage(), url: location.href });
+      return true;
+    }
     if (msg?.type !== 'print-result' || !cardEls) return;
     const r = msg.result;
     cardEls.print.textContent = r.ok ? `Label printed ${fmtTime(r.ts)} ✓` : `Label ${r.data}`;

@@ -1,5 +1,5 @@
 // Full-page settings (opened by the toolbar icon). Writes chrome.storage.local;
-// content.js and capture.js watch storage, so changes land without a reload.
+// capture.js watches storage, so changes land without a reload.
 
 const DEFAULT_ENDPOINT = 'https://diecastr.app/api/is-question';
 const WHATNOT_URLS = ['https://www.whatnot.com/*', 'https://whatnot.com/*'];
@@ -66,10 +66,10 @@ async function refreshStatus() {
     el.status.textContent = 'Not connected — reload the Whatnot tab';
   } else if (res.attached) {
     el.dot.dataset.state = 'on';
-    el.status.textContent = 'Connected to chat';
+    el.status.textContent = 'Connected to your live show';
   } else {
     el.dot.dataset.state = 'off';
-    el.status.textContent = 'Waiting for chat to load…';
+    el.status.textContent = 'Connected. Open your live show (Seller Hub › Shows › Open show)';
   }
 }
 
