@@ -419,21 +419,18 @@
   const SELLER_LEFT = 'div[class*="grid-cols-[375px_1fr"] > div:first-child > section';
 
   function mountCard() {
-    const col = document.querySelector(SELLER_LEFT) || document.querySelector(SHOP_COLUMN);
-    if (col) {
-      card.removeAttribute('data-floating');
-      if (card.parentElement !== col || col.firstElementChild !== card) col.prepend(card);
-    } else if (!document.body.contains(card)) {
-      card.setAttribute('data-floating', '');
-      document.body.append(card);
-    }
+    // Only ever in that column (owner, 2026-10-23): no floating fallback. Until
+    // the column renders, the card waits off-page; the next tick mounts it.
+    const col = document.querySelector(SELLER_LEFT);
+    if (!col) return;
+    card.removeAttribute('data-floating');
+    if (card.parentElement !== col || col.firstElementChild !== card) col.prepend(card);
   }
 
   function ensureCard() {
     injectStyle();
     if (card && document.contains(card)) {
       // Column appeared after we fell back to floating? Move in.
-      if (card.hasAttribute('data-floating') && (document.querySelector(SELLER_LEFT) || document.querySelector(SHOP_COLUMN))) mountCard();
       return;
     }
     if (card) { mountCard(); return; } // same card, re-attached after a re-render
